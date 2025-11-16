@@ -14,13 +14,13 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 20px;
-            background: #1a1a1a;
+            background: #1e1e2e;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: #2a2a2a;
+            background: #181825;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -28,7 +28,7 @@
 
         h1 {
             margin-bottom: 30px;
-            color: #e0e0e0;
+            color: #cdd6f4;
             font-size: 24px;
         }
 
@@ -40,7 +40,7 @@
         .timeline-bar {
             width: 100%;
             height: 60px;
-            background: #3a3a3a;
+            background: #313244;
             border-radius: 4px;
             position: relative;
             margin-bottom: 10px;
@@ -59,15 +59,15 @@
         }
 
         .activity-block.active {
-            background: #4caf50;
+            background: #a6e3a1;
         }
 
         .activity-block.idle {
-            background: #f44336;
+            background: #f38ba8;
         }
 
         .activity-block.unknown {
-            background: #4caf50;
+            background: #a6e3a1;
         }
 
         .activity-block.empty {
@@ -79,8 +79,8 @@
             bottom: 70px;
             left: 50%;
             transform: translateX(-50%);
-            background: #1a1a1a;
-            color: #e0e0e0;
+            background: #181825;
+            color: #cdd6f4;
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 12px;
@@ -89,7 +89,7 @@
             opacity: 0;
             transition: opacity 0.2s;
             z-index: 1000;
-            border: 1px solid #444;
+            border: 1px solid #45475a;
         }
 
         .activity-block:hover .tooltip {
@@ -102,7 +102,7 @@
             position: relative;
             width: 100%;
             font-size: 12px;
-            color: #999;
+            color: #6c7086;
         }
 
         .time-label {
@@ -112,7 +112,7 @@
 
         .current-date {
             font-size: 14px;
-            color: #999;
+            color: #6c7086;
             margin-bottom: 20px;
         }
 
@@ -124,9 +124,9 @@
         }
 
         .date-navigation button {
-            background: #3a3a3a;
-            color: #e0e0e0;
-            border: 1px solid #555;
+            background: #313244;
+            color: #cdd6f4;
+            border: 1px solid #45475a;
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
@@ -135,16 +135,16 @@
         }
 
         .date-navigation button:hover {
-            background: #4a4a4a;
+            background: #45475a;
         }
 
         .date-navigation button:active {
-            background: #2a2a2a;
+            background: #1e1e2e;
         }
 
         .date-navigation .current-date {
             font-size: 16px;
-            color: #e0e0e0;
+            color: #cdd6f4;
             margin: 0;
             min-width: 200px;
             text-align: center;
@@ -154,23 +154,23 @@
             position: absolute;
             top: 0;
             height: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid #2196f3;
+            background: rgba(137, 180, 250, 0.2);
+            border: 2px solid #89b4fa;
             pointer-events: none;
             z-index: 100;
         }
 
         .selection-bubble {
             position: absolute;
-            background: #1a1a1a;
-            color: #e0e0e0;
+            background: #181825;
+            color: #cdd6f4;
             padding: 12px 16px;
             border-radius: 6px;
             font-size: 13px;
             white-space: nowrap;
             pointer-events: none;
             z-index: 1001;
-            border: 1px solid #2196f3;
+            border: 1px solid #89b4fa;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
@@ -179,7 +179,7 @@
         }
 
         .selection-bubble .active-time {
-            color: #4caf50;
+            color: #a6e3a1;
             font-weight: bold;
         }
     </style>
