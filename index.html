@@ -115,12 +115,84 @@
             color: #999;
             margin-bottom: 20px;
         }
+
+        .date-navigation {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .date-navigation button {
+            background: #3a3a3a;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .date-navigation button:hover {
+            background: #4a4a4a;
+        }
+
+        .date-navigation button:active {
+            background: #2a2a2a;
+        }
+
+        .date-navigation .current-date {
+            font-size: 16px;
+            color: #e0e0e0;
+            margin: 0;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .selection-overlay {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #2196f3;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .selection-bubble {
+            position: absolute;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1001;
+            border: 1px solid #2196f3;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .selection-bubble div {
+            margin: 4px 0;
+        }
+
+        .selection-bubble .active-time {
+            color: #4caf50;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Activity Monitor</h1>
-        <div class="current-date" id="currentDate"></div>
+        
+        <div class="date-navigation">
+            <button id="prevDay">&larr; Previous</button>
+            <div class="current-date" id="currentDate"></div>
+            <button id="nextDay">Next &rarr;</button>
+        </div>
         
         <div class="timeline-container">
             <div class="timeline-bar" id="timelineBar"></div>
@@ -142,12 +214,34 @@
             }
         }
 
+        // Current selected date
+        let currentDate = new Date();
+
         // Display current date
         function updateCurrentDate() {
             const dateElement = document.getElementById('currentDate');
-            const today = new Date();
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            dateElement.textContent = today.toLocaleDateString('en-US', options);
+            dateElement.textContent = currentDate.toLocaleDateString('en-US', options);
+        }
+
+        // Navigate to previous day
+        function goToPreviousDay() {
+            currentDate.setDate(currentDate.getDate() - 1);
+            updateCurrentDate();
+            loadActivities();
+        }
+
+        // Navigate to next day
+        function goToNextDay() {
+            currentDate.setDate(currentDate.getDate() + 1);
+            updateCurrentDate();
+            loadActivities();
+        }
+
+        // Initialize date navigation
+        function initDateNavigation() {
+            document.getElementById('prevDay').addEventListener('click', goToPreviousDay);
+            document.getElementById('nextDay').addEventListener('click', goToNextDay);
         }
 
         // Parse CSV data
@@ -174,15 +268,24 @@
         // Load and display activities
         async function loadActivities() {
             try {
-                const today = new Date();
-                const dateStr = today.toISOString().split('T')[0];
+                const dateStr = currentDate.toISOString().split('T')[0];
                 const response = await fetch(`logs/activity_log_${dateStr}.csv`);
+                
+                if (!response.ok) {
+                    throw new Error(`No data available for ${dateStr}`);
+                }
+                
                 const csvText = await response.text();
                 const activities = parseCSV(csvText);
 
+                activitiesData = activities; // Store for region selection
                 renderTimeline(activities);
             } catch (error) {
                 console.error('Error loading activities:', error);
+                // Clear timeline if no data
+                const timelineBar = document.getElementById('timelineBar');
+                timelineBar.innerHTML = '<div style="color: #999; padding: 20px; text-align: center;">No activity data available for this date</div>';
+                activitiesData = [];
             }
         }
 
@@ -277,10 +380,173 @@
             });
         }
 
+        // Region selection functionality
+        let isSelecting = false;
+        let selectionStart = 0;
+        let selectionOverlay = null;
+        let selectionBubble = null;
+        let activitiesData = [];
+
+        function initRegionSelection() {
+            const timelineBar = document.getElementById('timelineBar');
+            
+            timelineBar.addEventListener('mousedown', (e) => {
+                if (e.target !== timelineBar && !e.target.classList.contains('activity-block')) return;
+                
+                isSelecting = true;
+                const rect = timelineBar.getBoundingClientRect();
+                selectionStart = e.clientX - rect.left;
+                
+                // Create selection overlay
+                if (selectionOverlay) selectionOverlay.remove();
+                selectionOverlay = document.createElement('div');
+                selectionOverlay.className = 'selection-overlay';
+                selectionOverlay.style.left = selectionStart + 'px';
+                selectionOverlay.style.width = '0px';
+                timelineBar.appendChild(selectionOverlay);
+                
+                e.preventDefault();
+            });
+            
+            timelineBar.addEventListener('mousemove', (e) => {
+                if (!isSelecting) return;
+                
+                const rect = timelineBar.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const width = Math.abs(currentX - selectionStart);
+                const left = Math.min(selectionStart, currentX);
+                
+                selectionOverlay.style.left = left + 'px';
+                selectionOverlay.style.width = width + 'px';
+            });
+            
+            document.addEventListener('mouseup', (e) => {
+                if (!isSelecting) return;
+                
+                isSelecting = false;
+                const timelineBar = document.getElementById('timelineBar');
+                const rect = timelineBar.getBoundingClientRect();
+                const currentX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                
+                const startX = Math.min(selectionStart, currentX);
+                const endX = Math.max(selectionStart, currentX);
+                
+                if (endX - startX > 5) { // Minimum selection width
+                    showSelectionInfo(startX, endX, rect.width);
+                } else {
+                    if (selectionOverlay) selectionOverlay.remove();
+                }
+            });
+        }
+
+        function showSelectionInfo(startX, endX, totalWidth) {
+            const startPercent = (startX / totalWidth) * 100;
+            const endPercent = (endX / totalWidth) * 100;
+            
+            // Convert to time
+            const startMinutes = (startPercent / 100) * 24 * 60;
+            const endMinutes = (endPercent / 100) * 24 * 60;
+            
+            const startHour = Math.floor(startMinutes / 60);
+            const startMin = Math.floor(startMinutes % 60);
+            const endHour = Math.floor(endMinutes / 60);
+            const endMin = Math.floor(endMinutes % 60);
+            
+            const duration = endMinutes - startMinutes;
+            const durationHour = Math.floor(duration / 60);
+            const durationMin = Math.floor(duration % 60);
+            
+            // Calculate active time (green time) in the selection
+            const activeTime = calculateActiveTime(startMinutes, endMinutes);
+            const activeHour = Math.floor(activeTime / 60);
+            const activeMin = Math.floor(activeTime % 60);
+            
+            // Remove old bubble
+            if (selectionBubble) selectionBubble.remove();
+            
+            // Create bubble
+            selectionBubble = document.createElement('div');
+            selectionBubble.className = 'selection-bubble';
+            
+            const formatTime = (h, m) => `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            const formatDuration = (h, m) => {
+                if (h > 0) return `${h}h ${m}m`;
+                return `${m}m`;
+            };
+            
+            selectionBubble.innerHTML = `
+                <div><strong>Start:</strong> ${formatTime(startHour, startMin)}</div>
+                <div><strong>End:</strong> ${formatTime(endHour, endMin)}</div>
+                <div><strong>Duration:</strong> ${formatDuration(durationHour, durationMin)}</div>
+                <div class="active-time"><strong>Active Time:</strong> ${formatDuration(activeHour, activeMin)}</div>
+            `;
+            
+            // Position bubble
+            const timelineBar = document.getElementById('timelineBar');
+            const rect = timelineBar.getBoundingClientRect();
+            const centerX = (startX + endX) / 2;
+            
+            document.body.appendChild(selectionBubble);
+            const bubbleRect = selectionBubble.getBoundingClientRect();
+            
+            selectionBubble.style.left = (rect.left + centerX - bubbleRect.width / 2) + 'px';
+            selectionBubble.style.top = (rect.top - bubbleRect.height - 10) + 'px';
+            
+            // Close on click outside
+            const closeHandler = (e) => {
+                if (!selectionBubble.contains(e.target) && !selectionOverlay.contains(e.target)) {
+                    if (selectionBubble) selectionBubble.remove();
+                    if (selectionOverlay) selectionOverlay.remove();
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            
+            setTimeout(() => {
+                document.addEventListener('click', closeHandler);
+            }, 100);
+        }
+
+        function calculateActiveTime(startMinutes, endMinutes) {
+            let activeMinutes = 0;
+            
+            activitiesData.forEach((activity, index) => {
+                const currentTime = new Date(activity.timestamp);
+                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                
+                let nextMinutes;
+                if (index < activitiesData.length - 1) {
+                    const nextTime = new Date(activitiesData[index + 1].timestamp);
+                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
+                } else {
+                    nextMinutes = 24 * 60;
+                }
+                
+                // Check if this activity overlaps with selection
+                const activityStart = currentMinutes;
+                const activityEnd = Math.min(nextMinutes, currentMinutes + 5); // Max 5 minutes per block
+                
+                if (activityEnd > startMinutes && activityStart < endMinutes) {
+                    // Calculate overlap
+                    const overlapStart = Math.max(activityStart, startMinutes);
+                    const overlapEnd = Math.min(activityEnd, endMinutes);
+                    const overlapDuration = overlapEnd - overlapStart;
+                    
+                    // Only count if activity is active (not idle)
+                    if (activity.isIdle === 'false' || activity.isIdle === '') {
+                        activeMinutes += overlapDuration;
+                    }
+                }
+            });
+            
+            return activeMinutes;
+        }
+
         // Initialize
         generateTimeLabels();
         updateCurrentDate();
+        initDateNavigation();
         loadActivities();
+        initRegionSelection();
     </script>
 </body>
 </html>
