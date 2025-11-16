@@ -5,7 +5,7 @@
 
 # Configuration
 LOG_DIR="logs"
-INTERVAL=10  # seconds (change to 60 for production)
+INTERVAL=60  # seconds between logging
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"

@@ -1,6 +1,6 @@
 # Work Time Activity Monitor
 
-A simple activity monitoring system for Hyprland that tracks active windows and idle time, displaying them in a visual timeline.
+A simple activity monitoring system for Hyprland that tracks active windows and idle time, displaying them in a visual timeline with Catppuccin Mocha theme.
 
 ## Overview
 
@@ -9,27 +9,19 @@ This project consists of two main components:
 1. **Bash Script (`monitor_activity.sh`)** - Monitors your active windows and idle status
 2. **HTML Dashboard (`index.html`)** - Visualizes your daily activity in a timeline
 
-## How It Works
+## Features
 
-### Activity Monitoring
-
-The bash script runs in the background and:
-- Queries `hyprctl activewindow -j` to get the current active window
-- Reads idle status from `/tmp/.gtime_ipc` (set by hypridle)
-- Logs data every 10 seconds (configurable) to a CSV file
-- Creates one log file per day in the `logs/` directory
-
-**Log format:** `logs/activity_log_YYYY-MM-DD.csv`
-
-### Visual Timeline
-
-The HTML dashboard displays:
-- A horizontal bar representing 24 hours
-- Colored blocks for each activity:
+- **24-hour timeline visualization** with color-coded activity blocks
+- **Date navigation** to browse through historical activity logs
+- **Region selection** - Click and drag to select a time range and see:
+  - Start and end time
+  - Total duration
+  - Active time (green blocks) within the selection
+- **Activity blocks**:
   - **Green** - Active/working (window is active)
   - **Red** - Idle (no activity detected)
-- Hover over any block to see the window title/application name
-- Time labels every 2 hours below the timeline
+- **Hover tooltips** showing window title/application name
+- **Catppuccin Mocha** color theme
 
 ## Setup
 
@@ -47,25 +39,25 @@ listener {
 
 ### Running the Monitor
 
-Start the activity monitor:
+Add the monitor to your Hyprland config to start automatically:
 
 ```bash
-./monitor_activity.sh
+# ~/.config/hypr/hyprland.conf
+exec-once = ..../monitor_activity.sh
 ```
 
-This will run continuously and log your activity. Press `Ctrl+C` to stop.
-
-**Production settings:** Change `INTERVAL=10` to `INTERVAL=60` in the script to log every minute instead of every 10 seconds.
+The script logs activity every 60 seconds by default. You can adjust the `INTERVAL` variable in the script if needed.
 
 ### Viewing the Dashboard
 
-Open the dashboard in Chrome as a standalone app:
+Add a keybind to open the dashboard in Chrome as a standalone app:
 
 ```bash
-chrome --allow-file-access-from-files --user-data-dir=/tmp/chrome-dev --app=file:////home/geo/repos/wor_worktime/index.html
+# ~/.config/hypr/hyprland.conf
+bind = $mainMod, W, exec, google-chrome --allow-file-access-from-files --user-data-dir=/tmp/chrome-worktime --app=file:///..../geo-worktime/index.html
 ```
 
-The dashboard will automatically load today's activity log and display it on the timeline.
+The dashboard will automatically load today's activity log. Use the navigation buttons to browse previous or future days.
 
 ## File Structure
 
@@ -86,9 +78,12 @@ Each log file contains:
 - `window_class` - Application class name
 - `is_idle` - "true", "false", or "unknown"
 
-## Future Enhancements
+## How It Works
 
-- Date picker to view historical data
-- Activity statistics and summaries
-- Export reports
-- Filter by application type
+The bash script runs in the background and:
+- Queries `hyprctl activewindow -j` to get the current active window
+- Reads idle status from `/tmp/.gtime_ipc` (set by hypridle)
+- Logs data every 60 seconds to a CSV file
+- Creates one log file per day in the `logs/` directory
+
+**Log format:** `logs/activity_log_YYYY-MM-DD.csv`
