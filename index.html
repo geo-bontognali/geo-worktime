@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #e0e0e0;
+            font-size: 24px;
+        }
+
+        .timeline-container {
+            width: 100%;
+            padding: 20px 0;
+        }
+
+        .timeline-bar {
+            width: 100%;
+            height: 60px;
+            background: #3a3a3a;
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+            display: flex;
+        }
+
+        .activity-block {
+            height: 100%;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            position: relative;
+        }
+
+        .activity-block:hover {
+            opacity: 0.8;
+        }
+
+        .activity-block.active {
+            background: #4caf50;
+        }
+
+        .activity-block.idle {
+            background: #f44336;
+        }
+
+        .activity-block.unknown {
+            background: #4caf50;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            border: 1px solid #444;
+        }
+
+        .activity-block:hover .tooltip {
+            opacity: 1;
+        }
+
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            width: 100%;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .time-label {
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .current-date {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Activity Monitor</h1>
+        <div class="current-date" id="currentDate"></div>
+        
+        <div class="timeline-container">
+            <div class="timeline-bar" id="timelineBar"></div>
+            <div class="time-labels" id="timeLabels"></div>
+        </div>
+    </div>
+
+    <script>
+        // Generate time labels for 24 hours
+        function generateTimeLabels() {
+            const timeLabelsContainer = document.getElementById('timeLabels');
+            
+            // Generate labels for every 2 hours (0, 2, 4, 6, ... 22, 24)
+            for (let hour = 0; hour <= 24; hour += 2) {
+                const label = document.createElement('div');
+                label.className = 'time-label';
+                label.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                timeLabelsContainer.appendChild(label);
+            }
+        }
+
+        // Display current date
+        function updateCurrentDate() {
+            const dateElement = document.getElementById('currentDate');
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateElement.textContent = today.toLocaleDateString('en-US', options);
+        }
+
+        // Parse CSV data
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',');
+            const activities = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const match = lines[i].match(/"([^"]*)","([^"]*)","([^"]*)","([^"]*)"/);
+                if (match) {
+                    activities.push({
+                        timestamp: match[1],
+                        title: match[2] || 'Idle',
+                        class: match[3] || 'N/A',
+                        isIdle: match[4]
+                    });
+                }
+            }
+
+            return activities;
+        }
+
+        // Load and display activities
+        async function loadActivities() {
+            try {
+                const today = new Date();
+                const dateStr = today.toISOString().split('T')[0];
+                const response = await fetch(`logs/activity_log_${dateStr}.csv`);
+                const csvText = await response.text();
+                const activities = parseCSV(csvText);
+
+                renderTimeline(activities);
+            } catch (error) {
+                console.error('Error loading activities:', error);
+            }
+        }
+
+        // Render timeline with activities
+        function renderTimeline(activities) {
+            const timelineBar = document.getElementById('timelineBar');
+            timelineBar.innerHTML = '';
+
+            if (activities.length === 0) return;
+
+            // Create blocks for each activity
+            activities.forEach((activity, index) => {
+                const block = document.createElement('div');
+                block.className = 'activity-block';
+                
+                // Determine color based on idle status
+                if (activity.isIdle === 'true') {
+                    block.classList.add('idle');
+                } else if (activity.isIdle === 'false') {
+                    block.classList.add('active');
+                } else {
+                    block.classList.add('unknown');
+                }
+
+                // Calculate width based on time to next activity or end of day
+                const currentTime = new Date(activity.timestamp);
+                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                
+                let nextMinutes;
+                if (index < activities.length - 1) {
+                    const nextTime = new Date(activities[index + 1].timestamp);
+                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
+                } else {
+                    nextMinutes = 24 * 60; // End of day
+                }
+
+                const duration = nextMinutes - currentMinutes;
+                const widthPercent = (duration / (24 * 60)) * 100;
+                block.style.width = `${widthPercent}%`;
+
+                // Create tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                const timeStr = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                tooltip.textContent = activity.title || 'Idle';
+                
+                block.appendChild(tooltip);
+                timelineBar.appendChild(block);
+            });
+        }
+
+        // Initialize
+        generateTimeLabels();
+        updateCurrentDate();
+        loadActivities();
+    </script>
+</body>
+</html>
