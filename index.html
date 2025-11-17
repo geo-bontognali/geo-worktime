@@ -185,7 +185,6 @@
     </style>
 </head>
 <body>
-    <div class="container">
         <h1>Activity Monitor</h1>
         
         <div class="date-navigation">
@@ -198,7 +197,6 @@
             <div class="timeline-bar" id="timelineBar"></div>
             <div class="time-labels" id="timeLabels"></div>
         </div>
-    </div>
 
     <script>
         // Generate time labels for 24 hours
@@ -297,6 +295,19 @@
             if (activities.length === 0) return;
 
             const MAX_GAP_MINUTES = 5;
+
+            // Add empty block from 00:00 to first activity
+            const firstActivity = activities[0];
+            const firstTime = new Date(firstActivity.timestamp);
+            const firstMinutes = firstTime.getHours() * 60 + firstTime.getMinutes();
+            
+            if (firstMinutes > 0) {
+                const emptyWidthPercent = (firstMinutes / (24 * 60)) * 100;
+                const emptyBlock = document.createElement('div');
+                emptyBlock.className = 'activity-block empty';
+                emptyBlock.style.width = `${emptyWidthPercent}%`;
+                timelineBar.appendChild(emptyBlock);
+            }
 
             // Create blocks for each activity
             activities.forEach((activity, index) => {

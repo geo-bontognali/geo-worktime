@@ -4,8 +4,9 @@
 # Logs active window and idle status to CSV
 
 # Configuration
-LOG_DIR="logs"
-INTERVAL=60  # seconds between logging
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$SCRIPT_DIR/logs"
+INTERVAL=10  # seconds between logging
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
