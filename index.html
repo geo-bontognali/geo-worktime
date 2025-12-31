@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #1e1e2e;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #181825;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #cdd6f4;
+            font-size: 24px;
+        }
+
+        .timeline-container {
+            width: 100%;
+            padding: 20px 0;
+        }
+
+        .timeline-bar {
+            width: 100%;
+            height: 60px;
+            background: #313244;
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+            display: flex;
+        }
+
+        .activity-block {
+            height: 100%;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            position: relative;
+        }
+
+        .activity-block:hover {
+            opacity: 0.8;
+        }
+
+        .activity-block.active {
+            background: #a6e3a1;
+        }
+
+        .activity-block.idle {
+            background: #f38ba8;
+        }
+
+        .activity-block.unknown {
+            background: #a6e3a1;
+        }
+
+        .activity-block.empty {
+            background: transparent;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #181825;
+            color: #cdd6f4;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            border: 1px solid #45475a;
+        }
+
+        .activity-block:hover .tooltip {
+            opacity: 1;
+        }
+
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            width: 100%;
+            font-size: 12px;
+            color: #6c7086;
+        }
+
+        .time-label {
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .current-date {
+            font-size: 14px;
+            color: #6c7086;
+            margin-bottom: 20px;
+        }
+
+        .date-navigation {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .date-navigation button {
+            background: #313244;
+            color: #cdd6f4;
+            border: 1px solid #45475a;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .date-navigation button:hover {
+            background: #45475a;
+        }
+
+        .date-navigation button:active {
+            background: #1e1e2e;
+        }
+
+        .date-navigation .current-date {
+            font-size: 16px;
+            color: #cdd6f4;
+            margin: 0;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .selection-overlay {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(137, 180, 250, 0.2);
+            border: 2px solid #89b4fa;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .selection-bubble {
+            position: absolute;
+            background: #181825;
+            color: #cdd6f4;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1001;
+            border: 1px solid #89b4fa;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .selection-bubble div {
+            margin: 4px 0;
+        }
+
+        .selection-bubble .active-time {
+            color: #a6e3a1;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+        <h1>Activity Monitor</h1>
+        
+        <div class="date-navigation">
+            <button id="prevDay">&larr; Previous</button>
+            <div class="current-date" id="currentDate"></div>
+            <button id="nextDay">Next &rarr;</button>
+        </div>
+        
+        <div class="timeline-container">
+            <div class="timeline-bar" id="timelineBar"></div>
+            <div class="time-labels" id="timeLabels"></div>
+        </div>
+
+    <script>
+        // Generate time labels for 24 hours
+        function generateTimeLabels() {
+            const timeLabelsContainer = document.getElementById('timeLabels');
+            
+            // Generate labels for every 2 hours (0, 2, 4, 6, ... 22, 24)
+            for (let hour = 0; hour <= 24; hour += 2) {
+                const label = document.createElement('div');
+                label.className = 'time-label';
+                label.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                timeLabelsContainer.appendChild(label);
+            }
+        }
+
+        // Current selected date
+        let currentDate = new Date();
+
+        // Display current date
+        function updateCurrentDate() {
+            const dateElement = document.getElementById('currentDate');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateElement.textContent = currentDate.toLocaleDateString('en-US', options);
+        }
+
+        // Navigate to previous day
+        function goToPreviousDay() {
+            currentDate.setDate(currentDate.getDate() - 1);
+            updateCurrentDate();
+            loadActivities();
+        }
+
+        // Navigate to next day
+        function goToNextDay() {
+            currentDate.setDate(currentDate.getDate() + 1);
+            updateCurrentDate();
+            loadActivities();
+        }
+
+        // Initialize date navigation
+        function initDateNavigation() {
+            document.getElementById('prevDay').addEventListener('click', goToPreviousDay);
+            document.getElementById('nextDay').addEventListener('click', goToNextDay);
+        }
+
+        // Parse CSV data
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',');
+            const activities = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const match = lines[i].match(/"([^"]*)","([^"]*)","([^"]*)","([^"]*)"/);
+                if (match) {
+                    activities.push({
+                        timestamp: match[1],
+                        title: match[2] || 'Idle',
+                        class: match[3] || 'N/A',
+                        isIdle: match[4]
+                    });
+                }
+            }
+
+            return activities;
+        }
+
+        // Load and display activities
+        async function loadActivities() {
+            try {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const response = await fetch(`logs/activity_log_${dateStr}.csv`);
+                
+                if (!response.ok) {
+                    throw new Error(`No data available for ${dateStr}`);
+                }
+                
+                const csvText = await response.text();
+                const activities = parseCSV(csvText);
+
+                activitiesData = activities; // Store for region selection
+                renderTimeline(activities);
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                // Clear timeline if no data
+                const timelineBar = document.getElementById('timelineBar');
+                timelineBar.innerHTML = '<div style="color: #999; padding: 20px; text-align: center;">No activity data available for this date</div>';
+                activitiesData = [];
+            }
+        }
+
+        // Render timeline with activities
+        function renderTimeline(activities) {
+            const timelineBar = document.getElementById('timelineBar');
+            timelineBar.innerHTML = '';
+
+            if (activities.length === 0) return;
+
+            const MAX_GAP_MINUTES = 5;
+
+            // Add empty block from 00:00 to first activity
+            const firstActivity = activities[0];
+            const firstTime = new Date(firstActivity.timestamp);
+            const firstMinutes = firstTime.getHours() * 60 + firstTime.getMinutes();
+            
+            if (firstMinutes > 0) {
+                const emptyWidthPercent = (firstMinutes / (24 * 60)) * 100;
+                const emptyBlock = document.createElement('div');
+                emptyBlock.className = 'activity-block empty';
+                emptyBlock.style.width = `${emptyWidthPercent}%`;
+                timelineBar.appendChild(emptyBlock);
+            }
+
+            // Create blocks for each activity
+            activities.forEach((activity, index) => {
+                const currentTime = new Date(activity.timestamp);
+                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                
+                let nextMinutes;
+                if (index < activities.length - 1) {
+                    const nextTime = new Date(activities[index + 1].timestamp);
+                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
+                } else {
+                    nextMinutes = 24 * 60; // End of day
+                }
+
+                const duration = nextMinutes - currentMinutes;
+
+                // If gap is more than 5 minutes, don't show this activity
+                if (duration > MAX_GAP_MINUTES) {
+                    // Show the activity block for its actual duration or max 5 minutes
+                    const actualDuration = Math.min(duration, MAX_GAP_MINUTES);
+                    const widthPercent = (actualDuration / (24 * 60)) * 100;
+
+                    const block = document.createElement('div');
+                    block.className = 'activity-block';
+                    
+                    // Determine color based on idle status
+                    if (activity.isIdle === 'true') {
+                        block.classList.add('idle');
+                    } else if (activity.isIdle === 'false') {
+                        block.classList.add('active');
+                    } else {
+                        block.classList.add('unknown');
+                    }
+
+                    block.style.width = `${widthPercent}%`;
+
+                    // Create tooltip
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip';
+                    tooltip.textContent = activity.title || 'Idle';
+                    
+                    block.appendChild(tooltip);
+                    timelineBar.appendChild(block);
+
+                    // Add empty block for the gap if it's more than 5 minutes
+                    if (duration > MAX_GAP_MINUTES) {
+                        const gapDuration = duration - MAX_GAP_MINUTES;
+                        const gapWidthPercent = (gapDuration / (24 * 60)) * 100;
+                        
+                        const emptyBlock = document.createElement('div');
+                        emptyBlock.className = 'activity-block empty';
+                        emptyBlock.style.width = `${gapWidthPercent}%`;
+                        timelineBar.appendChild(emptyBlock);
+                    }
+                } else {
+                    // Normal case: show activity for full duration
+                    const widthPercent = (duration / (24 * 60)) * 100;
+
+                    const block = document.createElement('div');
+                    block.className = 'activity-block';
+                    
+                    // Determine color based on idle status
+                    if (activity.isIdle === 'true') {
+                        block.classList.add('idle');
+                    } else if (activity.isIdle === 'false') {
+                        block.classList.add('active');
+                    } else {
+                        block.classList.add('unknown');
+                    }
+
+                    block.style.width = `${widthPercent}%`;
+
+                    // Create tooltip
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip';
+                    tooltip.textContent = activity.title || 'Idle';
+                    
+                    block.appendChild(tooltip);
+                    timelineBar.appendChild(block);
+                }
+            });
+        }
+
+        // Region selection functionality
+        let isSelecting = false;
+        let selectionStart = 0;
+        let selectionOverlay = null;
+        let selectionBubble = null;
+        let activitiesData = [];
+
+        function initRegionSelection() {
+            const timelineBar = document.getElementById('timelineBar');
+            
+            timelineBar.addEventListener('mousedown', (e) => {
+                if (e.target !== timelineBar && !e.target.classList.contains('activity-block') && !e.target.classList.contains('empty')) return;
+                
+                isSelecting = true;
+                const rect = timelineBar.getBoundingClientRect();
+                selectionStart = e.clientX - rect.left;
+                
+                // Remove any existing bubble
+                if (selectionBubble) selectionBubble.remove();
+                
+                // Create selection overlay
+                if (selectionOverlay) selectionOverlay.remove();
+                selectionOverlay = document.createElement('div');
+                selectionOverlay.className = 'selection-overlay';
+                selectionOverlay.style.left = selectionStart + 'px';
+                selectionOverlay.style.width = '0px';
+                timelineBar.appendChild(selectionOverlay);
+                
+                e.preventDefault();
+            });
+            
+            timelineBar.addEventListener('mousemove', (e) => {
+                if (!isSelecting) return;
+                
+                const rect = timelineBar.getBoundingClientRect();
+                const currentX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                const width = Math.abs(currentX - selectionStart);
+                const left = Math.min(selectionStart, currentX);
+                
+                selectionOverlay.style.left = left + 'px';
+                selectionOverlay.style.width = width + 'px';
+                
+                // Show bubble during selection if width is significant
+                if (width > 5) {
+                    const startX = Math.min(selectionStart, currentX);
+                    const endX = Math.max(selectionStart, currentX);
+                    showSelectionInfo(startX, endX, rect.width);
+                }
+            });
+            
+            document.addEventListener('mouseup', (e) => {
+                if (!isSelecting) return;
+                
+                isSelecting = false;
+                const timelineBar = document.getElementById('timelineBar');
+                const rect = timelineBar.getBoundingClientRect();
+                const currentX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                
+                const startX = Math.min(selectionStart, currentX);
+                const endX = Math.max(selectionStart, currentX);
+                
+                if (endX - startX > 5) { // Minimum selection width
+                    showSelectionInfo(startX, endX, rect.width);
+                    // Enable click-to-close after a short delay
+                    setTimeout(() => {
+                        enableClickToClose();
+                    }, 150);
+                } else {
+                    if (selectionOverlay) selectionOverlay.remove();
+                    if (selectionBubble) selectionBubble.remove();
+                }
+            });
+        }
+
+        function showSelectionInfo(startX, endX, totalWidth) {
+            const startPercent = (startX / totalWidth) * 100;
+            const endPercent = (endX / totalWidth) * 100;
+            
+            // Convert to time
+            const startMinutes = (startPercent / 100) * 24 * 60;
+            const endMinutes = (endPercent / 100) * 24 * 60;
+            
+            const startHour = Math.floor(startMinutes / 60);
+            const startMin = Math.floor(startMinutes % 60);
+            const endHour = Math.floor(endMinutes / 60);
+            const endMin = Math.floor(endMinutes % 60);
+            
+            const duration = endMinutes - startMinutes;
+            const durationHour = Math.floor(duration / 60);
+            const durationMin = Math.floor(duration % 60);
+            
+            // Calculate active time (green time) in the selection
+            const activeTime = calculateActiveTime(startMinutes, endMinutes);
+            const activeHour = Math.floor(activeTime / 60);
+            const activeMin = Math.floor(activeTime % 60);
+            
+            // Calculate inactive time (red time) in the selection
+            const inactiveTime = calculateInactiveTime(startMinutes, endMinutes);
+            const inactiveHour = Math.floor(inactiveTime / 60);
+            const inactiveMin = Math.floor(inactiveTime % 60);
+            
+            // Remove old bubble
+            if (selectionBubble) selectionBubble.remove();
+            
+            // Create bubble
+            selectionBubble = document.createElement('div');
+            selectionBubble.className = 'selection-bubble';
+            
+            const formatTime = (h, m) => `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            const formatDuration = (h, m) => {
+                if (h > 0) return `${h}h ${m}m`;
+                return `${m}m`;
+            };
+            
+            selectionBubble.innerHTML = `
+                <div><strong>Start:</strong> ${formatTime(startHour, startMin)}</div>
+                <div><strong>End:</strong> ${formatTime(endHour, endMin)}</div>
+                <div><strong>Duration:</strong> ${formatDuration(durationHour, durationMin)}</div>
+                <div class="active-time"><strong>Active Time:</strong> ${formatDuration(activeHour, activeMin)}</div>
+                <div style="color: #f38ba8;"><strong>Inactive Time:</strong> ${formatDuration(inactiveHour, inactiveMin)}</div>
+            `;
+            
+            // Position bubble
+            const timelineBar = document.getElementById('timelineBar');
+            const rect = timelineBar.getBoundingClientRect();
+            const centerX = (startX + endX) / 2;
+            
+            document.body.appendChild(selectionBubble);
+            const bubbleRect = selectionBubble.getBoundingClientRect();
+            
+            selectionBubble.style.left = (rect.left + centerX - bubbleRect.width / 2) + 'px';
+            selectionBubble.style.top = (rect.top - bubbleRect.height - 10) + 'px';
+        }
+
+        function enableClickToClose() {
+            const closeHandler = (e) => {
+                if (selectionBubble && !selectionBubble.contains(e.target) && 
+                    selectionOverlay && !selectionOverlay.contains(e.target)) {
+                    if (selectionBubble) selectionBubble.remove();
+                    if (selectionOverlay) selectionOverlay.remove();
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            
+            document.addEventListener('click', closeHandler);
+        }
+
+        function calculateActiveTime(startMinutes, endMinutes) {
+            let activeMinutes = 0;
+            const MAX_GAP_MINUTES = 5;
+            
+            activitiesData.forEach((activity, index) => {
+                const currentTime = new Date(activity.timestamp);
+                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                
+                let nextMinutes;
+                if (index < activitiesData.length - 1) {
+                    const nextTime = new Date(activitiesData[index + 1].timestamp);
+                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
+                } else {
+                    nextMinutes = 24 * 60;
+                }
+                
+                const duration = nextMinutes - currentMinutes;
+                
+                // Match the rendering logic exactly
+                let activityEnd;
+                if (duration > MAX_GAP_MINUTES) {
+                    // If gap is more than 5 minutes, activity block is only 5 minutes
+                    activityEnd = currentMinutes + MAX_GAP_MINUTES;
+                } else {
+                    // If gap is 5 minutes or less, activity block spans the full duration
+                    activityEnd = nextMinutes;
+                }
+                
+                const activityStart = currentMinutes;
+                
+                // Check if this activity overlaps with selection
+                if (activityEnd > startMinutes && activityStart < endMinutes) {
+                    // Calculate overlap
+                    const overlapStart = Math.max(activityStart, startMinutes);
+                    const overlapEnd = Math.min(activityEnd, endMinutes);
+                    const overlapDuration = overlapEnd - overlapStart;
+                    
+                    // Only count if activity is active (not idle)
+                    // Match the rendering logic: false = active, true = idle, anything else (unknown) = active
+                    if (activity.isIdle === 'false' || activity.isIdle === 'unknown' || activity.isIdle === '') {
+                        activeMinutes += overlapDuration;
+                    }
+                }
+            });
+            
+            return activeMinutes;
+        }
+
+        function calculateInactiveTime(startMinutes, endMinutes) {
+            let inactiveMinutes = 0;
+            const MAX_GAP_MINUTES = 5;
+            
+            activitiesData.forEach((activity, index) => {
+                const currentTime = new Date(activity.timestamp);
+                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                
+                let nextMinutes;
+                if (index < activitiesData.length - 1) {
+                    const nextTime = new Date(activitiesData[index + 1].timestamp);
+                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
+                } else {
+                    nextMinutes = 24 * 60;
+                }
+                
+                const duration = nextMinutes - currentMinutes;
+                
+                // Match the rendering logic exactly
+                let activityEnd;
+                if (duration > MAX_GAP_MINUTES) {
+                    // If gap is more than 5 minutes, activity block is only 5 minutes
+                    activityEnd = currentMinutes + MAX_GAP_MINUTES;
+                } else {
+                    // If gap is 5 minutes or less, activity block spans the full duration
+                    activityEnd = nextMinutes;
+                }
+                
+                const activityStart = currentMinutes;
+                
+                // Check if this activity overlaps with selection
+                if (activityEnd > startMinutes && activityStart < endMinutes) {
+                    // Calculate overlap
+                    const overlapStart = Math.max(activityStart, startMinutes);
+                    const overlapEnd = Math.min(activityEnd, endMinutes);
+                    const overlapDuration = overlapEnd - overlapStart;
+                    
+                    // Only count if activity is idle (true)
+                    if (activity.isIdle === 'true') {
+                        inactiveMinutes += overlapDuration;
+                    }
+                }
+            });
+            
+            return inactiveMinutes;
+        }
+
+        // Initialize
+        generateTimeLabels();
+        updateCurrentDate();
+        initDateNavigation();
+        loadActivities();
+        initRegionSelection();
+    </script>
+</body>
+</html>
