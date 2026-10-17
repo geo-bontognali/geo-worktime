@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Activity monitor script for Hyprland
-# Logs active window and idle status to CSV
+# Logs active window and idle status to CSV every 90 s
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,8 +32,8 @@ while true; do
     
     if [ $? -eq 0 ] && [ -n "$WINDOW_JSON" ]; then
         # Extract title and class from JSON using grep and sed
-        WINDOW_TITLE=$(echo "$WINDOW_JSON" | grep -oP '"title":\s*"\K[^"]*' | head -1 | sed 's/,/;/g')
-        WINDOW_CLASS=$(echo "$WINDOW_JSON" | grep -oP '"class":\s*"\K[^"]*' | head -1 | sed 's/,/;/g')
+        WINDOW_TITLE=$(echo "$WINDOW_JSON" | grep -oP '"title":\s*"\K[^"]*' | head -1 | sed "s/,/;/g; s/\"/'/g")
+        WINDOW_CLASS=$(echo "$WINDOW_JSON" | grep -oP '"class":\s*"\K[^"]*' | head -1 | sed "s/,/;/g; s/\"/'/g")
         
         # Set to N/A if empty
         [ -z "$WINDOW_TITLE" ] && WINDOW_TITLE="N/A"

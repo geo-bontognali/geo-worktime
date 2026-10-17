@@ -1,644 +1,865 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity Monitor</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>worktime</title>
+<style>
+    /* ---------- tokens (catppuccin mocha) ---------- */
+    :root {
+        --crust: #11111b; --mantle: #181825; --base: #1e1e2e;
+        --surface0: #313244; --surface1: #45475a; --surface2: #585b70;
+        --overlay0: #6c7086; --overlay1: #7f849c; --subtext0: #a6adc8; --text: #cdd6f4;
+        --lavender: #b4befe; --green: #a6e3a1; --yellow: #f9e2af; --red: #f38ba8;
+        --font: 'CaskaydiaCove Nerd Font', 'CaskaydiaCove NF', 'JetBrainsMono Nerd Font', monospace;
+        --lane: 104px;
+    }
+    @media (min-width: 2000px) { :root { --lane: 136px; } body { font-size: 14px; padding: 40px 64px; } }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
-            background: #1e1e2e;
-        }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+        background: var(--base); color: var(--text);
+        font: 13px/1.6 var(--font);
+        padding: 28px 40px; overflow: hidden; user-select: none;
+        display: flex; flex-direction: column;
+    }
+    #probe { position: absolute; visibility: hidden; white-space: pre; }
+    .k { color: var(--overlay0); }
+    .sug { font-style: italic; }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: #181825;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
+    /* ---------- header ---------- */
+    header { display: flex; align-items: baseline; gap: 3ch; margin-bottom: 40px; white-space: pre; }
+    #brand { color: var(--lavender); font-weight: bold; }
+    .arrow { color: var(--overlay0); cursor: pointer; padding: 0 .5ch; }
+    .arrow:hover { color: var(--text); }
+    #dateT.today { color: var(--lavender); }
+    #todayT { color: var(--overlay0); cursor: pointer; }
+    #todayT:hover { color: var(--text); }
+    #dayT { margin-left: auto; color: var(--subtext0); }
+    #ai { color: var(--overlay0); cursor: pointer; }
+    #ai.busy { color: var(--subtext0); }
+    #ai.ok { color: var(--green); }
+    #ai.err { color: var(--red); }
 
-        h1 {
-            margin-bottom: 30px;
-            color: #cdd6f4;
-            font-size: 24px;
-        }
+    /* ---------- timeline ---------- */
+    #tl { position: relative; }
+    #hours { position: relative; height: 22px; color: var(--overlay0); font-size: 12px; }
+    #hours span { position: absolute; top: 0; transform: translateX(-50%); white-space: pre; }
+    #hours .now { color: var(--red); }
+    #lane { position: relative; height: var(--lane); background: var(--mantle); border-radius: 4px; overflow: hidden; }
+    .run { position: absolute; top: 0; height: calc(50% - 1px); }
+    .run.active { background: var(--green); }
+    .run.idle { background: color-mix(in srgb, var(--yellow) 62%, var(--mantle)); }   /* on, but nobody at it */
+    .off, .sw.off { background: repeating-linear-gradient(45deg, var(--surface1) 0 1px, transparent 1px 6px); }   /* the pc was off */
+    #offs .off { position: absolute; top: 0; height: 100%; pointer-events: none; }
+    .run.hl { box-shadow: inset 0 0 0 1px var(--text); }
+    .mark { position: absolute; top: calc(50% + 1px); height: calc(50% - 1px); background: var(--c); pointer-events: none; transition: opacity .12s; }
+    .mark.sug { background: color-mix(in srgb, var(--c) 55%, var(--mantle)); }
+    .mark.dim { opacity: .25; }
+    .sw { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; }
+    .sw.off { box-shadow: inset 0 0 0 1px var(--surface1); }
+    #now { position: absolute; top: 0; height: 100%; width: 2px; background: var(--red); }
+    .dim { position: absolute; top: 0; height: 100%; background: rgba(30, 30, 46, .6); opacity: 0; transition: opacity .12s; pointer-events: none; }
+    .dim.on { opacity: 1; }
+    #brk { position: relative; height: 24px; }
+    #readout { height: 24px; line-height: 24px; white-space: pre; overflow: hidden; text-overflow: ellipsis; color: var(--subtext0); margin-top: 4px; }
 
-        .timeline-container {
-            width: 100%;
-            padding: 20px 0;
-        }
+    /* overlay over hours + lane + bracket row: the only pointer target of the timeline */
+    #ov { position: absolute; top: 0; left: 0; right: 0; height: calc(22px + var(--lane) + 24px); }
+    #ov > * { position: absolute; pointer-events: none; }
+    #hl { top: 22px; height: var(--lane); width: 1px; background: var(--overlay1); display: none; }
+    #region { top: 22px; height: var(--lane); background: rgba(205, 214, 244, .07); }
+    .edge { top: 18px; height: calc(var(--lane) + 8px); width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; }
+    .edge.snap { width: 3px; }
+    .et { top: 0; height: 22px; padding: 0 4px; background: var(--base); font-weight: bold; font-size: 12px; white-space: pre; }
+    #dur { top: calc(22px + var(--lane) + 4px); height: 20px; line-height: 20px; text-align: center; color: var(--subtext0); white-space: pre; overflow: hidden; }
+    #ov:not(.on) #region, #ov:not(.on) .edge, #ov:not(.on) .et, #ov:not(.on) #dur { display: none; }
 
-        .timeline-bar {
-            width: 100%;
-            height: 60px;
-            background: #313244;
-            border-radius: 4px;
-            position: relative;
-            margin-bottom: 10px;
-            display: flex;
-        }
+    /* ---------- customer prompt (replaces the readout line) ---------- */
+    #prompt { display: flex; height: 24px; line-height: 24px; margin-top: 4px; white-space: pre; overflow: hidden; }
+    #prompt[hidden] { display: none; }
+    #prompt label { color: var(--subtext0); }
+    #prompt input { font: inherit; color: var(--text); background: none; border: none; outline: none; width: 1ch; margin-right: 2ch; }
+    #cands { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    #cands span.c { margin-right: 2ch; color: var(--overlay0); }
+    #cands span.c b { font-weight: normal; color: var(--subtext0); }
+    #cands .sel { background: var(--lavender); color: var(--base) !important; padding: 0 .5ch; border-radius: 2px; }
+    #cands .sel b { color: var(--base) !important; }
 
-        .activity-block {
-            height: 100%;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            position: relative;
-        }
+    /* ---------- summary: the selection (or the day) per customer ---------- */
+    #sum { margin-top: 36px; max-width: 170ch; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--surface1) transparent; }
+    #sumHead { display: flex; gap: 3ch; white-space: pre; margin-bottom: 14px; }
+    #sumHead .sc { color: var(--lavender); font-weight: bold; }
+    #copy { margin-left: auto; color: var(--overlay0); cursor: pointer; }
+    #copy:hover { color: var(--text); }
+    #copy.ok { color: var(--green); }
+    .crow { display: grid; grid-template-columns: 5ch 26ch minmax(60px, 1fr) 7ch 6ch; align-items: center; gap: 2ch; height: 30px; padding: 0 1ch; border-radius: 3px; cursor: pointer; white-space: pre; }
+    .crow:hover { background: var(--mantle); }
+    .crow.on { background: var(--surface0); }
+    .crow.on .bar { background: var(--surface1); }
+    .crow .c { font-weight: bold; }
+    .crow .n { color: var(--subtext0); overflow: hidden; text-overflow: ellipsis; }
+    .crow .bar { position: relative; height: 6px; background: var(--surface0); border-radius: 3px; overflow: hidden; }
+    .crow .bar i { position: absolute; top: 0; left: 0; height: 100%; background: var(--c); border-radius: 3px; }
+    .crow .bar i.s { background: color-mix(in srgb, var(--c) 45%, transparent); }
+    .crow .h, .crow .d { text-align: right; }
+    .crow .d { color: var(--subtext0); }
+    .crow.tot { cursor: default; border-top: 1px solid var(--surface0); border-radius: 0; margin-top: 6px; height: 34px; }
+    .crow.tot:hover { background: none; }
+    .crow.tot .d { color: var(--text); }
+    .empty { color: var(--overlay0); padding: 8px 1ch; }
 
-        .activity-block:hover {
-            opacity: 0.8;
-        }
-
-        .activity-block.active {
-            background: #a6e3a1;
-        }
-
-        .activity-block.idle {
-            background: #f38ba8;
-        }
-
-        .activity-block.unknown {
-            background: #a6e3a1;
-        }
-
-        .activity-block.empty {
-            background: transparent;
-        }
-
-        .tooltip {
-            position: absolute;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #181825;
-            color: #cdd6f4;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: nowrap;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 1000;
-            border: 1px solid #45475a;
-        }
-
-        .activity-block:hover .tooltip {
-            opacity: 1;
-        }
-
-        .time-labels {
-            display: flex;
-            justify-content: space-between;
-            position: relative;
-            width: 100%;
-            font-size: 12px;
-            color: #6c7086;
-        }
-
-        .time-label {
-            text-align: center;
-            min-width: 40px;
-        }
-
-        .current-date {
-            font-size: 14px;
-            color: #6c7086;
-            margin-bottom: 20px;
-        }
-
-        .date-navigation {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .date-navigation button {
-            background: #313244;
-            color: #cdd6f4;
-            border: 1px solid #45475a;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .date-navigation button:hover {
-            background: #45475a;
-        }
-
-        .date-navigation button:active {
-            background: #1e1e2e;
-        }
-
-        .date-navigation .current-date {
-            font-size: 16px;
-            color: #cdd6f4;
-            margin: 0;
-            min-width: 200px;
-            text-align: center;
-        }
-
-        .selection-overlay {
-            position: absolute;
-            top: 0;
-            height: 100%;
-            background: rgba(137, 180, 250, 0.2);
-            border: 2px solid #89b4fa;
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        .selection-bubble {
-            position: absolute;
-            background: #181825;
-            color: #cdd6f4;
-            padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 1001;
-            border: 1px solid #89b4fa;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        .selection-bubble div {
-            margin: 4px 0;
-        }
-
-        .selection-bubble .active-time {
-            color: #a6e3a1;
-            font-weight: bold;
-        }
-    </style>
+    footer { margin-top: 16px; color: var(--overlay0); white-space: pre; overflow: hidden; font-size: 12px; }
+    footer kbd { font: inherit; color: var(--overlay1); }
+</style>
 </head>
 <body>
-        <h1>Activity Monitor</h1>
-        
-        <div class="date-navigation">
-            <button id="prevDay">&larr; Previous</button>
-            <div class="current-date" id="currentDate"></div>
-            <button id="nextDay">Next &rarr;</button>
-        </div>
-        
-        <div class="timeline-container">
-            <div class="timeline-bar" id="timelineBar"></div>
-            <div class="time-labels" id="timeLabels"></div>
-        </div>
+<span id="probe">0000000000</span>
+<header>
+    <span id="brand">worktime</span>
+    <span><span class="arrow" id="prev">‹</span><span id="dateT"></span><span class="arrow" id="next">›</span></span>
+    <span id="todayT">today</span>
+    <span id="dayT"></span>
+    <span id="ai" hidden title="click to ask again"></span>
+</header>
+<div id="tl">
+    <div id="hours"></div>
+    <div id="lane"><div id="offs"></div><div id="runs"></div><div id="marks"></div><div id="now" hidden></div><div class="dim" id="dimL"></div><div class="dim" id="dimR"></div></div>
+    <div id="brk"></div>
+    <div id="ov">
+        <div id="region"></div><div id="hl"></div>
+        <div class="edge" id="e0"></div><div class="edge" id="e1"></div>
+        <div class="et" id="t0"></div><div class="et" id="t1"></div>
+        <div id="dur"></div>
+    </div>
+</div>
+<div id="readout"></div>
+<div id="prompt" hidden><label id="plabel"></label><input id="pin" spellcheck="false" autocomplete="off"><span id="cands"></span></div>
+<div id="sum"><div id="sumHead"></div><div id="cust"></div></div>
+<footer><kbd>drag</kbd> select   <kbd>click</kbd> block   <kbd>double-click</kbd> whole stretch   <kbd>esc</kbd> clear   <kbd>right-click</kbd> / <kbd>c</kbd> set customer   <kbd>y</kbd> copy   <kbd>← →</kbd> day   <kbd>t</kbd> today</footer>
 
-    <script>
-        // Generate time labels for 24 hours
-        function generateTimeLabels() {
-            const timeLabelsContainer = document.getElementById('timeLabels');
-            
-            // Generate labels for every 2 hours (0, 2, 4, 6, ... 22, 24)
-            for (let hour = 0; hour <= 24; hour += 2) {
-                const label = document.createElement('div');
-                label.className = 'time-label';
-                label.textContent = `${hour.toString().padStart(2, '0')}:00`;
-                timeLabelsContainer.appendChild(label);
-            }
+<script src="config.js"></script>
+<script>
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pad2 = n => String(n).padStart(2, '0');
+const MIN = 60000, HOUR = 3600000;
+const rmin = ms => Math.round(ms / MIN) * MIN;   // shown times round to the minute, like durations
+const hm = ms => { const d = new Date(rmin(ms)); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+const dur = ms => { const m = Math.round(ms / MIN); return Math.floor(m / 60) + 'h' + pad2(m % 60); };
+const span = s => dur(s.end - s.start);   // exact, so it is never below the active time inside it
+const qh = ms => ms < MIN / 2 ? 0 : Math.max(.25, Math.round(ms / HOUR * 4) / 4);    // booking unit: quarter hours; seconds book nothing
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const floorH = t => { const d = new Date(t); d.setMinutes(0, 0, 0); return d.getTime(); };
+const ceilH = t => { const f = floorH(t); return f === t ? t : f + HOUR; };
+const store = {
+    get(k, d) { try { const v = localStorage.getItem('wt.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { v == null ? localStorage.removeItem('wt.' + k) : localStorage.setItem('wt.' + k, JSON.stringify(v)); } catch { } },
+};
+const DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const MON = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const dkey = d => `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+const dms = d => new Date(d.y, d.m - 1, d.d).getTime();
+const todayD = () => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() + 1, d: n.getDate() }; };
+const isToday = d => dkey(d) === dkey(todayD());
+const shiftDay = (d, n) => { const x = new Date(d.y, d.m - 1, d.d + n); return { y: x.getFullYear(), m: x.getMonth() + 1, d: x.getDate() }; };
+const fmtDate = d => `${DOW[new Date(d.y, d.m - 1, d.d).getDay()]} ${d.d} ${MON[d.m - 1]} ${d.y}`;
+const dayEnd = d => dms(shiftDay(d, 1));   // next local midnight (23 / 25 h after d0 on the dst days)
+const hmE = ms => rmin(ms) >= dayEnd(state.date) ? '24:' + pad2(new Date(rmin(ms)).getMinutes()) : hm(ms);   // a log that runs to midnight ends at 24:00
+const dict = o => Object.assign(Object.create(null), o);   // prototype-free map: a title 'constructor' must not hit Object.prototype
+
+// ---------- config ----------
+const CFG = window.WORKTIME_CONFIG || {};
+const PALETTE = ['#89b4fa', '#cba6f7', '#fab387', '#94e2d5', '#f5c2e7', '#f9e2af', '#74c7ec', '#f2cdcd', '#eba0ac', '#89dceb'];
+const CAT = { blue: '#89b4fa', mauve: '#cba6f7', peach: '#fab387', teal: '#94e2d5', pink: '#f5c2e7', yellow: '#f9e2af', sapphire: '#74c7ec',
+    flamingo: '#f2cdcd', maroon: '#eba0ac', sky: '#89dceb', green: '#a6e3a1', red: '#f38ba8', lavender: '#b4befe', rosewater: '#f5e0dc' };
+const pat = s => s.length > 2 && s[0] === '/' && s.at(-1) === '/' ? new RegExp(s.slice(1, -1), 'i') : s.toLowerCase();
+const CUST = new Map();   // code -> { code, name, color, pats }
+(CFG.customers || []).forEach((c, i) => CUST.set(c.code, { code: c.code, name: c.name || c.code, color: CAT[c.color] || c.color || PALETTE[i % PALETTE.length], pats: (c.match || []).map(pat) }));
+const INT = { code: 'INT', name: (CFG.internal && CFG.internal.name) || 'internal', color: '#7f849c', pats: ((CFG.internal && CFG.internal.match) || []).map(pat) };
+const INT_JIRA = new Set((CFG.internal && CFG.internal.jira) || []);
+const IGNORE = (CFG.ignore || []).map(pat);
+const RULES = dict(CFG.rules);
+const AI = CFG.ai && CFG.ai.endpoint && CFG.ai.apiKey ? CFG.ai : null;
+// customer by code; codes of old assignments or rules that are not configured are created on the fly
+function cust(code) {
+    if (code === 'INT') return INT;
+    let c = CUST.get(code);
+    if (!c) CUST.set(code, c = { code, name: code, color: PALETTE[CUST.size % PALETTE.length], pats: [] });
+    return c;
+}
+const color = code => !code || code === '?' ? 'var(--surface2)' : cust(code).color;
+const CLS = [[/teams/, 'teams'], [/outlook/, 'outlook'], [/chatgpt/, 'chatgpt'], [/claude/, 'claude'], [/music\.youtube/, 'music'],
+    [/keeper/, 'keeper'], [/office|excel|powerpoint|sharepoint/, 'office'], [/chrom/, 'chrome'], [/^code|vscode|visual/, 'code'],
+    [/kitty/, 'kitty'], [/rider/, 'rider'], [/remmina/, 'remmina'], [/anydesk/, 'anydesk']];
+function clsShort(c) {
+    if (c === 'N/A') return 'locked';
+    const l = c.toLowerCase();
+    for (const [re, n] of CLS) if (re.test(l)) return n;
+    return c.length > 10 ? c.slice(0, 10) : c;
+}
+
+// ---------- state ----------
+const state = {
+    date: todayD(), live: null, samples: [], items: [], sessions: [], runs: [], blocks: [], snaps: [],
+    range: { start: 0, end: 1 }, day: null, sel: null, filter: null, hov: null, px: null, prompt: null,
+    laneW: 1, laneX: 0, chW: 8, assign: dict(store.get('assign')), ai: dict(store.get('ai')),
+};
+const scope = () => state.sel || state.day || state.range;
+
+// ---------- parse ----------
+const LINE = /^"(.*)","(.*)","(.*)","(.*)"$/, TS = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)$/;
+function parse(text, today) {
+    const out = [], now = Date.now();
+    for (const l of text.split(/\r?\n/)) {
+        const m = LINE.exec(l), d = m && TS.exec(m[1]);
+        if (!d) continue;   // header, blank or broken line
+        const t = new Date(+d[1], d[2] - 1, +d[3], +d[4], +d[5], +d[6]).getTime();
+        const locked = m[2] === 'N/A' && m[3] === 'N/A';
+        out.push({ t, end: 0, title: m[2], cls: m[3], state: locked ? 'locked' : m[4] === 'true' ? 'idle' : 'active' });
+    }
+    out.sort((a, b) => a.t - b.t);
+    // sample i covers [t, min(next, t+5min)); the last one 90 s, or up to now while the logger is alive today
+    for (let i = 0; i < out.length; i++) {
+        const s = out[i], n = out[i + 1];
+        s.end = n ? Math.min(n.t, s.t + 5 * MIN) : today && now > s.t && now - s.t < 5 * MIN ? now : s.t + 90000;
+    }
+    return out;
+}
+const SUFFIX = / - Google Chrome$| - Visual Studio Code$| - Microsoft Azure$| \| Microsoft Teams$| - Outlook$| \(External\)$| \(External unfamiliar\)$/;
+const GLYPH = /^[ -⯿\s]+/;   // spinner / status glyphs (✳ ◑ ◐ ●…) claude code puts in front of kitty titles
+function clean(title) {   // display form: glyphs, unread counter "(2) " and app suffixes stripped, case kept
+    let t = title.replace(GLYPH, '').replace(/^\(\d+\)\s+/, ''), u;
+    while ((u = t.replace(SUFFIX, '')) !== t) t = u;
+    return t.trim();
+}
+const titleKey = (title, cls) => clean(title).replace(/\s+/g, ' ').toLowerCase() + (cls === 'kitty' || cls === 'N/A' ? ' | ' + cls : '');
+
+// samples -> sessions (+ off gaps in the same ordered list)
+function build(samples) {
+    const items = [], sessions = [];
+    let cur = null;
+    for (const s of samples) {
+        const key = titleKey(s.title, s.cls);
+        if (cur && cur.end === s.t && cur.key === key && cur.cls === s.cls && cur.state === s.state) { cur.end = s.end; cur.n++; continue; }
+        if (cur && s.t > cur.end) items.push({ state: 'off', start: cur.end, end: s.t });
+        cur = { start: s.t, end: s.end, key, title: s.title, cls: s.cls, state: s.state, n: 1, code: null, source: 'none', suggested: false, ignored: false, run: -1 };
+        items.push(cur); sessions.push(cur);
+    }
+    state.items = items; state.sessions = sessions;
+}
+
+// ---------- resolve: which customer, per title ----------
+const JIRA = /\b([A-Z][A-Z0-9]{1,5})-\d{1,6}\b/g;
+const verdict = (v, source) => v === 'x' ? { code: null, source, ignored: true } : v === '-' ? { code: null, source } : { code: cust(v).code, source };
+function classify(key, title, cls) {   // first hit wins: yours › config rules › jira key › keyword › ignore › ai
+    let v = state.assign[key];
+    if (v !== undefined) return verdict(v, 'manual');
+    v = RULES[key];
+    if (v !== undefined) return verdict(v, 'rule');
+    JIRA.lastIndex = 0;
+    for (let m; (m = JIRA.exec(title));) {
+        if (INT_JIRA.has(m[1])) return { code: 'INT', source: 'jira' };
+        if (CUST.has(m[1])) return { code: m[1], source: 'jira' };
+    }
+    const hay = (key + ' | ' + cls).toLowerCase();
+    let best = null, len = 0;
+    // longest entry as written wins (a /…/ counts its pattern, not the matched text), ties → config order
+    const test = c => { for (const p of c.pats) {
+        let l = 0;
+        if (typeof p === 'string') { if (p && hay.includes(p)) l = p.length; }
+        else if (p.test(hay)) l = p.source.length + 2;
+        if (l > len) { len = l; best = c; }
+    } };
+    for (const c of CUST.values()) test(c);
+    test(INT);
+    if (best) return { code: best.code, source: 'keyword' };
+    for (const p of IGNORE) if (typeof p === 'string' ? hay.includes(p) : p.test(hay)) return { code: null, source: 'ignore', ignored: true };
+    const a = state.ai[key];
+    if (a) { const c = a.c && (a.c === 'INT' || CUST.has(a.c)) ? a.c : null; return { code: c, source: 'ai', suggested: !!c }; }
+    return { code: null, source: 'none' };
+}
+function resolve() {
+    const memo = new Map(), S = state.sessions;
+    for (const s of S) {
+        if (s.state !== 'active') { s.code = null; s.source = 'none'; s.suggested = s.ignored = false; continue; }
+        let r = memo.get(s.key);
+        if (!r) memo.set(s.key, r = classify(s.key, s.title, s.cls));
+        s.code = r.code; s.source = r.source; s.suggested = !!r.suggested; s.ignored = !!r.ignored;
+    }
+    // sandwich: short unassigned session between two active neighbours of the same customer takes it (as a suggestion)
+    const act = S.filter(s => s.state === 'active'), base = act.map(s => s.code);
+    for (let i = 1; i < act.length - 1; i++) {
+        const s = act[i], p = act[i - 1], n = act[i + 1];
+        if (base[i] || s.ignored || s.source === 'manual' || s.source === 'rule' || s.end - s.start > 10 * MIN) continue;
+        if (base[i - 1] && base[i - 1] === base[i + 1] && s.start - p.end <= 20 * MIN && n.start - s.end <= 20 * MIN) { s.code = base[i - 1]; s.source = 'sandwich'; s.suggested = true; }
+    }
+    // runs: the lane blocks, worked or inactive (idle + locked); blocks: powered-on stretches
+    const runs = [], blocks = [];
+    let r = null, b = null;
+    for (const it of state.items) {
+        if (it.state === 'off') { r = null; b = null; continue; }
+        const st = it.state === 'active' ? 'active' : 'idle';
+        if (r && r.state === st) { r.end = it.end; it.run = r.i; }
+        else { r = { i: runs.length, start: it.start, end: it.end, state: st }; runs.push(r); it.run = r.i; }
+        if (b) b.end = it.end; else blocks.push(b = { start: it.start, end: it.end });
+    }
+    state.runs = runs; state.blocks = blocks;
+}
+
+// ---------- stats: the one source of every number ----------
+function stats(sc, titles) {
+    const r = { active: 0, idle: 0, byCode: {} };
+    for (const it of state.items) {
+        if (it.start >= sc.end) break;
+        const a = Math.max(it.start, sc.start), b = Math.min(it.end, sc.end);
+        if (b <= a) continue;
+        const d = b - a;
+        if (it.state === 'active') {
+            r.active += d;
+            const c = it.code || '?', e = r.byCode[c] || (r.byCode[c] = { active: 0, suggested: 0, ignored: 0, titles: titles ? new Map() : null });
+            e.active += d;
+            if (it.suggested) e.suggested += d;
+            if (it.ignored) e.ignored += d;
+            else if (titles) { const t = clean(it.title); e.titles.set(t, (e.titles.get(t) || 0) + d); }
+        } else if (it.state !== 'off') r.idle += d;
+    }
+    return r;
+}
+const bookable = (c, e) => c === '?' ? e.active - e.ignored : e.active;   // ignored titles are never booked
+function codesOf(st) {   // customers by time, then INT, then unassigned; a few seconds cut off by an edge are no row
+    const rank = c => c === '?' ? 2 : c === 'INT' ? 1 : 0;
+    return Object.keys(st.byCode).filter(c => st.byCode[c].active >= MIN / 2).sort((a, b) => rank(a) - rank(b) || st.byCode[b].active - st.byCode[a].active);
+}
+
+// ---------- timeline ----------
+const lane = $('lane'), runsEl = $('runs'), ov = $('ov'), hoursEl = $('hours'), hl = $('hl'), readoutEl = $('readout');
+const ms2x = ms => (ms - state.range.start) / (state.range.end - state.range.start) * state.laneW;
+const x2ms = x => state.range.start + x / state.laneW * (state.range.end - state.range.start);
+const pct = ms => (ms - state.range.start) / (state.range.end - state.range.start) * 100;
+function measure() {
+    state.chW = $('probe').getBoundingClientRect().width / 10;
+    const r = lane.getBoundingClientRect();
+    state.laneW = Math.max(1, r.width); state.laneX = r.left;
+}
+function layout() {   // the day = first to last active sample (a locked night is not the day); visible range: whole hours around it, ≥ 8 h
+    const today = isToday(state.date), now = Date.now(), d0 = dms(state.date), d1 = dayEnd(state.date);
+    const act = state.samples.filter(s => s.state === 'active'), S = act.length ? act : state.samples;
+    let a, b;
+    if (S.length) { a = floorH(S[0].t); b = ceilH(Math.max(S[S.length - 1].end, today ? now : 0)); }
+    else if (today) { b = ceilH(now); a = b - 8 * HOUR; }
+    else { a = d0 + 8 * HOUR; b = d0 + 18 * HOUR; }
+    if (b - a < 8 * HOUR) b = a + 8 * HOUR;
+    if (b > d1) { b = d1; a = Math.min(a, b - 8 * HOUR); }
+    a = Math.max(a, d0);
+    state.range = { start: a, end: b };
+    state.day = S.length ? { start: S[0].t, end: S[S.length - 1].end } : null;
+    // snap targets: block edges, now, range ends
+    const p = new Set([a, b]);
+    for (const r of state.runs) { p.add(r.start); p.add(r.end); }
+    if (today && now > a && now < b) p.add(now);
+    state.snaps = [...p].sort((x, y) => x - y);
+}
+let hourBoxes = [];   // [el, x0, x1] per hour label: the selection edge times hide the ones they cover
+function renderHours() {
+    const { start, end } = state.range, pxh = state.laneW / ((end - start) / HOUR), d1 = dayEnd(state.date);
+    const step = pxh < 60 ? 2 : 1, now = Date.now(), nx = isToday(state.date) && now > start && now < end ? ms2x(now) : -1e9;
+    let html = '';
+    for (let t = ceilH(start); t <= end; t += HOUR) {
+        const h = t >= d1 ? 24 : new Date(t).getHours();
+        if (step === 2 && h % 2 || Math.abs(ms2x(t) - nx) < 4 * state.chW) continue;   // `now` keeps its spot
+        html += `<span style="left:${pct(t)}%">${pad2(h)}</span>`;
+    }
+    if (nx > 0) html += `<span class="now" style="left:${pct(now)}%">now</span>`;
+    hoursEl.innerHTML = html;
+    hourBoxes = [...hoursEl.children].map(el => { const c = el.offsetLeft, h = el.offsetWidth / 2; return [el, c - h, c + h]; });
+}
+function renderLane() {   // blocks with % positions; only on data change
+    let html = '';
+    for (const r of state.runs) html += `<div class="run ${r.state}" style="left:${pct(r.start)}%;width:${pct(r.end) - pct(r.start)}%"></div>`;
+    runsEl.innerHTML = html;
+    let off = '';
+    for (const it of state.items) if (it.state === 'off') off += `<div class="off" style="left:${pct(it.start)}%;width:${pct(it.end) - pct(it.start)}%"></div>`;
+    $('offs').innerHTML = off;
+    const now = Date.now(), inRange = isToday(state.date) && now > state.range.start && now < state.range.end;
+    $('now').hidden = !inRange;
+    if (inRange) $('now').style.left = pct(now) + '%';
+    renderMarks();
+}
+function renderMarks() {   // lower band: every worked stretch in its customer's colour; a highlighted customer keeps its colour, the rest fade
+    const c = state.filter;
+    let html = '';
+    for (const s of state.sessions) {
+        if (s.state !== 'active') continue;
+        const code = s.code || '?', col = code === '?' ? 'var(--surface2)' : color(code);
+        html += `<div class="mark${s.suggested ? ' sug' : ''}${c && code !== c ? ' dim' : ''}" style="left:${pct(s.start)}%;width:${pct(s.end) - pct(s.start)}%;--c:${col}"></div>`;
+    }
+    $('marks').innerHTML = html;
+}
+// binary search: the item covering ms
+function at(arr, ms) {
+    let lo = 0, hi = arr.length - 1, f = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (arr[m].start <= ms) { f = m; lo = m + 1; } else hi = m - 1; }
+    return f >= 0 && arr[f].end > ms ? arr[f] : null;
+}
+const codeSpan = (c, sug) => `<span class="${sug ? 'sug' : ''}" style="color:${color(c)};font-weight:bold">${sug ? '~' : ''}${esc(c)}</span>`;
+function readout(ms) {   // one line about what is under the pointer
+    const s = at(state.items, ms);
+    if (!s) { readoutEl.textContent = ''; return; }
+    if (s.state !== 'active') { readoutEl.innerHTML = `<span class="k">${hmE(ms)}   ${s.state === 'off' ? 'off' : 'inactive'}</span>`; return; }
+    const who = s.code ? codeSpan(s.code, s.suggested) + (s.suggested ? ' <span class="k">suggested</span>' : '') : '<span class="k">no customer</span>';
+    readoutEl.innerHTML = `<span class="k">${hmE(ms)}</span>   ${who}   ${esc(clean(s.title))}  <span class="k">${esc(clsShort(s.cls))}</span>`;
+}
+
+// ---------- summary ----------
+const sumHead = $('sumHead'), custEl = $('cust');
+function renderHeader() {
+    const today = isToday(state.date);
+    $('dateT').textContent = fmtDate(state.date);
+    $('dateT').classList.toggle('today', today);
+    $('todayT').hidden = today;
+    document.title = 'worktime ' + dkey(state.date);
+    const d = state.day, st = d && stats(d);
+    const off = d ? d.end - d.start - st.active - st.idle : 0;   // what stats leaves out inside the day: the gaps
+    $('dayT').innerHTML = d ? `${hm(d.start)} → ${hmE(d.end)}   <span class="sw" style="background:var(--green)"></span><span class="k">active</span> ${dur(st.active)}   <span class="sw" style="background:color-mix(in srgb, var(--yellow) 62%, var(--mantle))"></span><span class="k">inactive</span> ${dur(st.idle)}   <span class="sw off"></span><span class="k">off</span> ${dur(off)}` : '';
+}
+function renderSummary(st) {
+    if (!state.day) { sumHead.innerHTML = ''; custEl.innerHTML = `<div class="empty">no log for ${fmtDate(state.date)}</div>`; return; }
+    const sc = scope(), sel = !!state.sel;
+    st = st || stats(sc);
+    sumHead.innerHTML = `<span class="sc">${sel ? 'selection' : 'whole day'}</span><span>${hm(sc.start)} → ${hmE(sc.end)}</span><span>${span(sc)}</span>` +
+        `<span><span class="k">active</span> ${dur(st.active)}</span><span><span class="k">inactive</span> ${dur(st.idle)}</span>` +
+        `<span><span class="k">off</span> ${dur(Math.max(0, sc.end - sc.start - st.active - st.idle))}</span>` +
+        (sel ? '<span class="k">esc → whole day</span>' : '') + `<span id="copy">copy  y</span>`;
+    const codes = codesOf(st), max = Math.max(1, ...codes.map(c => st.byCode[c].active));
+    let html = '', tot = 0;
+    for (const c of codes) {
+        const e = st.byCode[c], d = qh(bookable(c, e)), conf = e.active - e.suggested;   // the decimals are what y copies
+        tot += d;
+        const name = c === '?' ? 'no customer' : cust(c).name;
+        html += `<div class="crow${state.filter === c ? ' on' : ''}" data-c="${esc(c)}" style="--c:${color(c)}">` +
+            `<span class="c" style="color:${color(c)}">${esc(c)}</span><span class="n">${esc(name)}${e.suggested ? ' <span class="k sug">~</span>' : ''}</span>` +
+            `<span class="bar"><i class="s" style="width:${e.active / max * 100}%"></i><i style="width:${conf / max * 100}%"></i></span>` +
+            `<span class="h">${dur(e.active)}</span><span class="d">${d.toFixed(2)}</span></div>`;
+    }
+    html += `<div class="crow tot"><span></span><span class="n">total</span><span></span><span class="h">${dur(st.active)}</span><span class="d">${tot.toFixed(2)}</span></div>`;
+    custEl.innerHTML = html;
+}
+function setFilter(c) {
+    state.filter = c;
+    renderMarks(); renderSummary();
+}
+
+// ---------- selection ----------
+const e0 = $('e0'), e1 = $('e1'), t0 = $('t0'), t1 = $('t1'), region = $('region'), durEl = $('dur'), dimL = $('dimL'), dimR = $('dimR');
+let drag = null, raf = 0;
+function renderSel(snapEdge) {
+    const sel = state.sel, on = !!sel;
+    ov.classList.toggle('on', on); dimL.classList.toggle('on', on); dimR.classList.toggle('on', on);
+    if (!on) { for (const [el] of hourBoxes) el.style.visibility = ''; return; }
+    const W = state.laneW, x0 = ms2x(sel.start), x1 = ms2x(sel.end), w = 5 * state.chW + 8;
+    region.style.left = x0 + 'px'; region.style.width = (x1 - x0) + 'px';
+    e0.style.left = x0 + 'px'; e1.style.left = x1 + 'px';
+    e0.classList.toggle('snap', snapEdge === 0); e1.classList.toggle('snap', snapEdge === 1);
+    dimL.style.width = x0 + 'px'; dimR.style.left = x1 + 'px'; dimR.style.width = (W - x1) + 'px';
+    t0.textContent = hm(sel.start); t1.textContent = hmE(sel.end);
+    let l0 = x0 - w / 2, l1 = x1 - w / 2;
+    if (x1 - x0 < w) { l0 = x0 - w; l1 = x1; }   // too narrow to centre both: push them apart
+    l0 = clamp(l0, -w / 2, W - w / 2); l1 = clamp(l1, -w / 2, W - w / 2);
+    if (l1 - l0 < w) { if (l1 >= W - w / 2) l0 = l1 - w; else l1 = l0 + w; }   // a clamp at a lane end moved only one of them
+    t0.style.left = l0 + 'px'; t1.style.left = l1 + 'px';
+    const g = state.chW / 2, hit = (a, b) => (b > l0 - g && a < l0 + w + g) || (b > l1 - g && a < l1 + w + g);
+    for (const [el, a, b] of hourBoxes) el.style.visibility = hit(a, b) ? 'hidden' : '';
+    const bw = x1 - x0;
+    durEl.style.display = bw >= 6 * state.chW ? '' : 'none';
+    durEl.style.left = x0 + 'px'; durEl.style.width = bw + 'px'; durEl.textContent = span(sel);
+}
+function finish() {   // selection changed by gesture or key: keep it on screen, persist and redraw what depends on it
+    if (state.sel) state.sel = { start: Math.max(state.sel.start, state.range.start), end: Math.min(state.sel.end, state.range.end) };
+    if (state.sel && state.sel.end - state.sel.start < MIN) state.sel = null;
+    store.set('sel.' + dkey(state.date), state.sel);
+    setHash();
+    renderSel(-1); renderSummary();
+}
+function snapMs(ms) {
+    if (drag.alt) return { ms, hit: false };
+    if (drag.shift) { const g = 5 * MIN, d0 = dms(state.date); return { ms: d0 + Math.round((ms - d0) / g) * g, hit: true }; }
+    const P = state.snaps, tol = 6 * (state.range.end - state.range.start) / state.laneW;
+    let lo = 0, hi = P.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (P[m] < ms) lo = m + 1; else hi = m; }
+    let best = P[lo];
+    if (lo > 0 && Math.abs(P[lo - 1] - ms) < Math.abs(best - ms)) best = P[lo - 1];
+    return best !== undefined && Math.abs(best - ms) <= tol ? { ms: best, hit: true } : { ms, hit: false };
+}
+function frame() {   // one drag frame: overlay + summary only
+    raf = 0;
+    if (!drag || !drag.moved) return;
+    const { start, end } = state.range;
+    const ms = x2ms(clamp(drag.x, 0, state.laneW));
+    let snapped = -1;
+    if (drag.mode === 'move') {
+        const r = snapMs(ms - drag.off), s = clamp(r.ms, start, end - drag.len);
+        state.sel = { start: s, end: s + drag.len };
+        if (r.hit && s === r.ms) snapped = 0;
+    } else {
+        const r = snapMs(ms), a = drag.mode === 'create' ? snapMs(drag.ms0).ms : drag.anchor, b = clamp(r.ms, start, end);   // a new selection snaps at both ends
+        state.sel = { start: Math.min(a, b), end: Math.max(a, b) };
+        if (r.hit) snapped = b < a ? 0 : 1;
+    }
+    renderSel(snapped); renderSummary();
+}
+function hover(x) {
+    if (state.hlRun) { state.hlRun.classList.remove('hl'); state.hlRun = null; }
+    if (x === null) { hl.style.display = 'none'; readoutEl.textContent = ''; state.hov = null; return; }
+    const ms = x2ms(clamp(x, 0, state.laneW));
+    hl.style.display = 'block'; hl.style.transform = `translateX(${clamp(x, 0, state.laneW)}px)`;
+    readout(ms);
+    const s = at(state.sessions, ms);
+    state.hov = s;
+    if (s && !drag) { state.hlRun = runsEl.children[s.run] || null; if (state.hlRun) state.hlRun.classList.add('hl'); }
+}
+function cursorAt(x) {
+    const sel = state.sel;
+    let c = 'crosshair';
+    if (sel) {
+        const x0 = ms2x(sel.start), x1 = ms2x(sel.end);
+        if (Math.abs(x - x0) <= 8 || Math.abs(x - x1) <= 8) c = 'ew-resize';
+        else if (x > x0 && x < x1) c = 'grab';
+    }
+    ov.style.cursor = c;
+}
+ov.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !state.day) return;   // nothing to select on an empty day
+    if (state.prompt) closePrompt();
+    const x = e.clientX - state.laneX, ms = x2ms(clamp(x, 0, state.laneW)), sel = state.sel;
+    let mode = 'create', edge = -1;
+    if (sel) {
+        const x0 = ms2x(sel.start), x1 = ms2x(sel.end), d0 = Math.abs(x - x0), d1 = Math.abs(x - x1);
+        if (Math.min(d0, d1) <= 8) { mode = 'edge'; edge = d1 < d0 ? 1 : 0; }   // the nearer edge: on a narrow selection the zones overlap
+        else if (x > x0 && x < x1) mode = 'move';
+    }
+    drag = { mode, x0: x, x, ms0: ms, moved: false, shift: e.shiftKey, alt: e.altKey, prev: sel && { ...sel },
+        anchor: mode === 'edge' ? (edge === 0 ? sel.end : sel.start) : ms,
+        off: mode === 'move' ? ms - sel.start : 0, len: mode === 'move' ? sel.end - sel.start : 0 };
+    try { ov.setPointerCapture(e.pointerId); } catch { }
+    e.preventDefault();
+});
+ov.addEventListener('pointermove', e => {
+    const x = state.px = e.clientX - state.laneX;
+    if (!state.prompt) hover(x);
+    if (!drag) { cursorAt(x); return; }
+    drag.x = x; drag.shift = e.shiftKey; drag.alt = e.altKey;
+    if (!drag.moved && Math.abs(x - drag.x0) >= 4) {
+        drag.moved = true;
+        ov.style.cursor = drag.mode === 'move' ? 'grabbing' : 'ew-resize';
+    }
+    if (drag.moved && !raf) raf = requestAnimationFrame(frame);
+});
+function pointerEnd(e) {
+    if (!drag) return;
+    const d = drag;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (d.moved && e.type === 'pointerup') frame();   // apply the last pointer position before letting go
+    drag = null;
+    if (e.type === 'pointercancel') { if (d.moved) { state.sel = d.prev; finish(); } }   // a cancelled gesture changes nothing
+    else if (!d.moved) { const r = at(state.runs, d.ms0); if (r) { state.sel = { start: r.start, end: r.end }; finish(); } }   // a click, from any zone: select the block under it
+    else {
+        if (state.sel && state.sel.end - state.sel.start < MIN) state.sel = d.mode === 'create' ? null : d.prev;
+        finish();
+    }
+    cursorAt(e.clientX - state.laneX);
+}
+ov.addEventListener('pointerup', pointerEnd);
+ov.addEventListener('pointercancel', pointerEnd);
+ov.addEventListener('dblclick', e => {   // the whole powered-on stretch
+    const b = at(state.blocks, x2ms(clamp(e.clientX - state.laneX, 0, state.laneW)));
+    if (b) { state.sel = { start: b.start, end: b.end }; finish(); }
+});
+ov.addEventListener('contextmenu', e => {   // right-click: set the customer of what is under the pointer
+    e.preventDefault();
+    const s = at(state.sessions, x2ms(clamp(e.clientX - state.laneX, 0, state.laneW)));
+    if (s) openPrompt(s);
+});
+ov.addEventListener('pointerleave', () => { state.px = null; if (!drag && !state.prompt) hover(null); });
+function stepRun(dir, extend) {   // only the blocks on screen
+    const { start, end } = state.range, R = state.runs.filter(r => r.end > start && r.start < end), sel = state.sel;
+    if (!R.length) return;
+    let r;
+    if (!sel) r = dir < 0 ? R[R.length - 1] : R[0];
+    else if (dir < 0) { let i = R.length - 1; while (i >= 0 && R[i].start >= sel.start) i--; r = R[i]; }
+    else { let i = 0; while (i < R.length && R[i].end <= sel.end) i++; r = R[i]; }
+    if (!r) return;
+    state.sel = extend && sel ? { start: Math.min(sel.start, r.start), end: Math.max(sel.end, r.end) } : { start: r.start, end: r.end };
+    finish();
+}
+function loadSel() {   // stored selection for the day, clamped, dropped if < 1 min
+    const s = store.get('sel.' + dkey(state.date), null), d0 = dms(state.date), d1 = dayEnd(state.date);
+    if (!s || typeof s.start !== 'number' || typeof s.end !== 'number') return null;
+    const a = clamp(s.start, d0, d1), b = clamp(s.end, d0, d1);
+    return b - a >= MIN ? { start: a, end: b } : null;
+}
+
+// ---------- customer prompt ----------
+const promptEl = $('prompt'), pin = $('pin'), candsEl = $('cands');
+const ALL = () => [...CUST.values(), INT, { code: '-', name: 'no customer' }, { code: 'x', name: 'ignore' }];
+function cands(q) {
+    const a = ALL();
+    q = q.trim().toLowerCase();
+    if (!q) return a;
+    const byCode = a.filter(c => c.code.toLowerCase().includes(q));
+    return [...byCode, ...a.filter(c => !byCode.includes(c) && c.name.toLowerCase().includes(q))];
+}
+function openPrompt(s) {
+    if (!s || s.state !== 'active') return;
+    state.prompt = { key: s.key, pre: s.ignored ? 'x' : s.code || '-', list: [], idx: 0 };   // current customer (or suggestion, or ignore) preselected: c + enter confirms it
+    const t = clean(s.title);
+    $('plabel').textContent = `customer for “${t.length > 48 ? t.slice(0, 48) + '…' : t}”  › `;
+    pin.value = '';
+    readoutEl.hidden = true; promptEl.hidden = false;
+    filterCands(); renderCands();
+    pin.focus();
+}
+function filterCands() {   // typed: best match first; empty: back to the preselection
+    const p = state.prompt;
+    p.list = cands(pin.value);
+    p.idx = pin.value.trim() ? 0 : Math.max(0, p.list.findIndex(c => c.code === p.pre));
+}
+function closePrompt() { state.prompt = null; pin.blur(); promptEl.hidden = true; readoutEl.hidden = false; hover(state.px); }
+function renderCands() {
+    const p = state.prompt;
+    pin.style.width = (pin.value.length + 1) + 'ch';
+    const L = p.list, rot = [...L.slice(p.idx), ...L.slice(0, p.idx)];   // selected one first, always visible
+    candsEl.innerHTML = rot.map((c, i) => `<span class="c${i === 0 ? ' sel' : ''}">${esc(c.code)}${c.code === 'INT' ? '' : ' <b>' + esc(c.name) + '</b>'}</span>`).join('');
+}
+pin.addEventListener('input', () => { filterCands(); renderCands(); });
+pin.addEventListener('keydown', e => {
+    const p = state.prompt;
+    if (!p) return;
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); closePrompt(); }
+    else if (e.key === 'Enter') {
+        e.preventDefault();
+        const c = p.list[p.idx];
+        if (c) { closePrompt(); assign(p.key, c.code); }
+    } else if (e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const n = p.list.length, back = e.key === 'ArrowUp' || e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey);
+        if (n) p.idx = (p.idx + (back ? n - 1 : 1)) % n;
+        renderCands();
+    }
+});
+pin.addEventListener('blur', () => { if (state.prompt) setTimeout(() => { if (state.prompt && document.activeElement !== pin) closePrompt(); }, 0); });
+function assign(key, v) {
+    state.assign[key] = v;
+    store.set('assign', state.assign);
+    reresolve();
+}
+function reresolve() {   // classification changed: redraw, keep selection
+    resolve(); layout();
+    renderLane(); renderHeader(); renderSel(-1); renderSummary();
+    if (!state.prompt) hover(state.px);   // the lane was rebuilt: readout and outline follow the new data
+    aiSchedule();
+}
+
+// ---------- copy: booking block for AbaNinja ----------
+async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); }
+    catch {
+        const ta = document.createElement('textarea');
+        ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch { }
+        ta.remove();
+    }
+}
+function copyBlock() {
+    if (!state.day) return;
+    const sc = scope(), st = stats(sc, true), rows = [];
+    let tot = 0, totMs = 0;
+    for (const c of codesOf(st)) {
+        const e = st.byCode[c], act = bookable(c, e), d = qh(act);
+        if (!d) continue;   // nothing to book: ignored, or seconds cut off by an edge
+        tot += d; totMs += act;
+        const titles = [...e.titles].sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]).join(', ');
+        rows.push([c, c === '?' ? 'no customer' : cust(c).name, d.toFixed(2) + ' h', titles]);
+    }
+    const cw = Math.max(5, ...rows.map(r => r[0].length + 1)), nw = Math.max(5, ...rows.map(r => r[1].length)), T = tot.toFixed(2) + ' h';   // the total is the widest amount
+    const lines = [`${dkey(state.date)}  ${state.sel ? 'selection' : 'day'} ${hm(sc.start)}–${hmE(sc.end)}`];
+    for (const r of rows) lines.push(`${r[0].padEnd(cw)}${r[1].padEnd(nw)}  ${r[2].padStart(T.length)}   ${r[3]}`);
+    lines.push(`${'total'.padEnd(cw + nw)}  ${T}   (${dur(totMs)} active before rounding)`);
+    copyText(lines.join('\n'));
+    const el = $('copy');
+    if (el) { el.textContent = 'copied ✓'; el.classList.add('ok'); setTimeout(() => { if (el.isConnected) { el.textContent = 'copy  y'; el.classList.remove('ok'); } }, 1200); }
+}
+
+// ---------- keys / mouse ----------
+document.addEventListener('keydown', e => {
+    if (state.prompt || e.ctrlKey || e.metaKey || e.altKey) return;
+    let used = true;
+    switch (e.key) {
+        case 'ArrowLeft': case '[': goDay(-1); break;
+        case 'ArrowRight': case ']': goDay(1); break;
+        case 't': goDay(0); break;
+        case 'h': stepRun(-1, false); break;
+        case 'l': stepRun(1, false); break;
+        case 'H': stepRun(-1, true); break;
+        case 'L': stepRun(1, true); break;
+        case 'Escape': if (state.sel) { state.sel = null; finish(); } else if (state.filter) setFilter(null); break;
+        case 'c': openPrompt(state.hov); break;
+        case 'y': copyBlock(); break;
+        default: used = false;
+    }
+    if (used) e.preventDefault();
+});
+custEl.addEventListener('click', e => {
+    const el = e.target.closest('.crow[data-c]');
+    if (el) setFilter(state.filter === el.dataset.c ? null : el.dataset.c);
+});
+sumHead.addEventListener('click', e => { if (e.target.id === 'copy') copyBlock(); });
+$('prev').addEventListener('click', () => goDay(-1));
+$('next').addEventListener('click', () => goDay(1));
+$('todayT').addEventListener('click', () => goDay(0));
+
+// ---------- ai: suggests a customer for titles no rule knows ----------
+const aiEl = $('ai');
+let aiTimer = 0, aiBusy = false, aiOkT = 0, aiCtl = null;
+function chip(st, v) {
+    if (!AI) { aiEl.hidden = true; return; }
+    aiEl.hidden = false; aiEl.className = st; aiEl.title = 'click to ask again';
+    clearTimeout(aiOkT);
+    if (st === 'busy') aiEl.textContent = 'ai …';
+    else if (st === 'ok') { aiEl.textContent = `ai ✓ ${v}`; aiOkT = setTimeout(() => chip('idle'), 3000); }
+    else if (st === 'err') { aiEl.textContent = 'ai ✗'; aiEl.title = v; }
+    else aiEl.textContent = 'ai';
+}
+function aiSchedule() { if (!AI || aiBusy) return; clearTimeout(aiTimer); aiTimer = setTimeout(aiRun, 800); }
+function aiPending() {   // distinct active titles no rule classified, ≥ 2 samples, not yet asked
+    const n = new Map();
+    for (const s of state.sessions) {
+        if (s.state !== 'active' || (s.source !== 'none' && s.source !== 'sandwich') || s.key in state.ai) continue;
+        const e = n.get(s.key) || n.set(s.key, { cls: s.cls, n: 0 }).get(s.key);
+        e.n += s.n;
+    }
+    return [...n].filter(([, v]) => v.n >= 2).slice(0, 120);
+}
+const validCode = c => !c ? null : c === 'INT' || CUST.has(c) ? c : INT_JIRA.has(c) ? 'INT' : null;
+async function aiRun() {
+    if (!AI || aiBusy) return;
+    const keys = aiPending();
+    if (!keys.length) return;
+    aiBusy = true; chip('busy');
+    const hints = c => c.pats.length ? ` (hints: ${c.pats.map(p => typeof p === 'string' ? p : p.source).join(', ')})` : '';
+    const codes = [...CUST.values()].map(c => `${c.code} ${c.name}${hints(c)}`).join('; ');
+    const instructions = `You classify window titles from one consultant's workday into customers. Reply only with JSON {"r":[{"i":<index>,"c":"<code>"|null}]}. ` +
+        `Codes: ${codes}; INT = internal ${INT.name} work${hints(INT)}. Context: ${CFG.context || ''} ` +
+        `A kitty title is a Claude Code session name describing the task; map it to the customer it fits. Use null when there is no real evidence; never guess.`;
+    // Azure insists the word "json" appears in the input (not only in instructions) when text.format is json_object
+    const input = 'Classify these titles; answer as JSON.\n' + keys.map(([k, v], i) => `${i} | ${clsShort(v.cls)} | ${k}`).join('\n');
+    const ctl = aiCtl = new AbortController(), to = setTimeout(() => ctl.abort(), 10000);
+    let next = null;   // runs once the flag is down: the next batch (via reresolve) or the re-ask
+    try {
+        const res = await fetch(AI.endpoint.replace(/\/+$/, '') + '/responses', {
+            method: 'POST', signal: ctl.signal,
+            headers: { 'Content-Type': 'application/json', 'api-key': AI.apiKey },
+            body: JSON.stringify({ model: AI.model || 'gpt-5.4', instructions, input, reasoning: { effort: AI.reasoningEffort || 'none' },
+                text: { format: { type: 'json_object' } }, store: false, stream: false }),
+        });
+        if (!res.ok) {
+            let msg = res.status + ' ' + res.statusText;
+            try { msg = (await res.json()).error.message || msg; } catch { }
+            throw new Error(msg);
         }
+        const j = await res.json();
+        let text = j.output_text || (j.output || []).flatMap(o => o.content || []).map(c => c.text || '').join('');
+        text = text.replace(/^\s*```(?:json)?\s*/, '').replace(/\s*```\s*$/, '');
+        const ans = new Map();
+        for (const x of JSON.parse(text).r || []) if (Number.isInteger(x.i) && keys[x.i]) ans.set(keys[x.i][0], validCode(x.c));
+        let fresh = 0;
+        for (const [k] of keys) { const c = ans.get(k) || null; state.ai[k] = { c, at: Date.now() }; if (c) fresh++; }
+        store.set('ai', state.ai);
+        chip('ok', fresh);
+        next = reresolve;
+    } catch (e) {
+        if (e === 'reask') next = aiSchedule;   // asked again while in flight: these answers are stale
+        else chip('err', e.name === 'AbortError' ? 'timeout' : e.message || 'failed');
+    } finally {
+        clearTimeout(to);
+        aiBusy = false; aiCtl = null;
+    }
+    if (next) next();
+}
+function aiReask() {   // forget today's answers and ask again
+    if (!AI) return;
+    if (aiCtl) aiCtl.abort('reask');
+    for (const s of state.sessions) delete state.ai[s.key];
+    store.set('ai', state.ai);
+    reresolve();
+    clearTimeout(aiTimer);
+    aiRun();
+}
+aiEl.addEventListener('click', aiReask);
 
-        // Current selected date
-        let currentDate = new Date();
-
-        // Display current date
-        function updateCurrentDate() {
-            const dateElement = document.getElementById('currentDate');
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            dateElement.textContent = currentDate.toLocaleDateString('en-US', options);
-        }
-
-        // Navigate to previous day
-        function goToPreviousDay() {
-            currentDate.setDate(currentDate.getDate() - 1);
-            updateCurrentDate();
-            loadActivities();
-        }
-
-        // Navigate to next day
-        function goToNextDay() {
-            currentDate.setDate(currentDate.getDate() + 1);
-            updateCurrentDate();
-            loadActivities();
-        }
-
-        // Initialize date navigation
-        function initDateNavigation() {
-            document.getElementById('prevDay').addEventListener('click', goToPreviousDay);
-            document.getElementById('nextDay').addEventListener('click', goToNextDay);
-        }
-
-        // Parse CSV data
-        function parseCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            const headers = lines[0].split(',');
-            const activities = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const match = lines[i].match(/"([^"]*)","([^"]*)","([^"]*)","([^"]*)"/);
-                if (match) {
-                    activities.push({
-                        timestamp: match[1],
-                        title: match[2] || 'Idle',
-                        class: match[3] || 'N/A',
-                        isIdle: match[4]
-                    });
-                }
-            }
-
-            return activities;
-        }
-
-        // Load and display activities
-        async function loadActivities() {
-            try {
-                const dateStr = currentDate.toISOString().split('T')[0];
-                const response = await fetch(`logs/activity_log_${dateStr}.csv`);
-                
-                if (!response.ok) {
-                    throw new Error(`No data available for ${dateStr}`);
-                }
-                
-                const csvText = await response.text();
-                const activities = parseCSV(csvText);
-
-                activitiesData = activities; // Store for region selection
-                renderTimeline(activities);
-            } catch (error) {
-                console.error('Error loading activities:', error);
-                // Clear timeline if no data
-                const timelineBar = document.getElementById('timelineBar');
-                timelineBar.innerHTML = '<div style="color: #999; padding: 20px; text-align: center;">No activity data available for this date</div>';
-                activitiesData = [];
-            }
-        }
-
-        // Render timeline with activities
-        function renderTimeline(activities) {
-            const timelineBar = document.getElementById('timelineBar');
-            timelineBar.innerHTML = '';
-
-            if (activities.length === 0) return;
-
-            const MAX_GAP_MINUTES = 5;
-
-            // Add empty block from 00:00 to first activity
-            const firstActivity = activities[0];
-            const firstTime = new Date(firstActivity.timestamp);
-            const firstMinutes = firstTime.getHours() * 60 + firstTime.getMinutes();
-            
-            if (firstMinutes > 0) {
-                const emptyWidthPercent = (firstMinutes / (24 * 60)) * 100;
-                const emptyBlock = document.createElement('div');
-                emptyBlock.className = 'activity-block empty';
-                emptyBlock.style.width = `${emptyWidthPercent}%`;
-                timelineBar.appendChild(emptyBlock);
-            }
-
-            // Create blocks for each activity
-            activities.forEach((activity, index) => {
-                const currentTime = new Date(activity.timestamp);
-                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-                
-                let nextMinutes;
-                if (index < activities.length - 1) {
-                    const nextTime = new Date(activities[index + 1].timestamp);
-                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
-                } else {
-                    nextMinutes = 24 * 60; // End of day
-                }
-
-                const duration = nextMinutes - currentMinutes;
-
-                // If gap is more than 5 minutes, don't show this activity
-                if (duration > MAX_GAP_MINUTES) {
-                    // Show the activity block for its actual duration or max 5 minutes
-                    const actualDuration = Math.min(duration, MAX_GAP_MINUTES);
-                    const widthPercent = (actualDuration / (24 * 60)) * 100;
-
-                    const block = document.createElement('div');
-                    block.className = 'activity-block';
-                    
-                    // Determine color based on idle status
-                    if (activity.isIdle === 'true') {
-                        block.classList.add('idle');
-                    } else if (activity.isIdle === 'false') {
-                        block.classList.add('active');
-                    } else {
-                        block.classList.add('unknown');
-                    }
-
-                    block.style.width = `${widthPercent}%`;
-
-                    // Create tooltip
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'tooltip';
-                    tooltip.textContent = activity.title || 'Idle';
-                    
-                    block.appendChild(tooltip);
-                    timelineBar.appendChild(block);
-
-                    // Add empty block for the gap if it's more than 5 minutes
-                    if (duration > MAX_GAP_MINUTES) {
-                        const gapDuration = duration - MAX_GAP_MINUTES;
-                        const gapWidthPercent = (gapDuration / (24 * 60)) * 100;
-                        
-                        const emptyBlock = document.createElement('div');
-                        emptyBlock.className = 'activity-block empty';
-                        emptyBlock.style.width = `${gapWidthPercent}%`;
-                        timelineBar.appendChild(emptyBlock);
-                    }
-                } else {
-                    // Normal case: show activity for full duration
-                    const widthPercent = (duration / (24 * 60)) * 100;
-
-                    const block = document.createElement('div');
-                    block.className = 'activity-block';
-                    
-                    // Determine color based on idle status
-                    if (activity.isIdle === 'true') {
-                        block.classList.add('idle');
-                    } else if (activity.isIdle === 'false') {
-                        block.classList.add('active');
-                    } else {
-                        block.classList.add('unknown');
-                    }
-
-                    block.style.width = `${widthPercent}%`;
-
-                    // Create tooltip
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'tooltip';
-                    tooltip.textContent = activity.title || 'Idle';
-                    
-                    block.appendChild(tooltip);
-                    timelineBar.appendChild(block);
-                }
-            });
-        }
-
-        // Region selection functionality
-        let isSelecting = false;
-        let selectionStart = 0;
-        let selectionOverlay = null;
-        let selectionBubble = null;
-        let activitiesData = [];
-
-        function initRegionSelection() {
-            const timelineBar = document.getElementById('timelineBar');
-            
-            timelineBar.addEventListener('mousedown', (e) => {
-                if (e.target !== timelineBar && !e.target.classList.contains('activity-block') && !e.target.classList.contains('empty')) return;
-                
-                isSelecting = true;
-                const rect = timelineBar.getBoundingClientRect();
-                selectionStart = e.clientX - rect.left;
-                
-                // Remove any existing bubble
-                if (selectionBubble) selectionBubble.remove();
-                
-                // Create selection overlay
-                if (selectionOverlay) selectionOverlay.remove();
-                selectionOverlay = document.createElement('div');
-                selectionOverlay.className = 'selection-overlay';
-                selectionOverlay.style.left = selectionStart + 'px';
-                selectionOverlay.style.width = '0px';
-                timelineBar.appendChild(selectionOverlay);
-                
-                e.preventDefault();
-            });
-            
-            timelineBar.addEventListener('mousemove', (e) => {
-                if (!isSelecting) return;
-                
-                const rect = timelineBar.getBoundingClientRect();
-                const currentX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-                const width = Math.abs(currentX - selectionStart);
-                const left = Math.min(selectionStart, currentX);
-                
-                selectionOverlay.style.left = left + 'px';
-                selectionOverlay.style.width = width + 'px';
-                
-                // Show bubble during selection if width is significant
-                if (width > 5) {
-                    const startX = Math.min(selectionStart, currentX);
-                    const endX = Math.max(selectionStart, currentX);
-                    showSelectionInfo(startX, endX, rect.width);
-                }
-            });
-            
-            document.addEventListener('mouseup', (e) => {
-                if (!isSelecting) return;
-                
-                isSelecting = false;
-                const timelineBar = document.getElementById('timelineBar');
-                const rect = timelineBar.getBoundingClientRect();
-                const currentX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-                
-                const startX = Math.min(selectionStart, currentX);
-                const endX = Math.max(selectionStart, currentX);
-                
-                if (endX - startX > 5) { // Minimum selection width
-                    showSelectionInfo(startX, endX, rect.width);
-                    // Enable click-to-close after a short delay
-                    setTimeout(() => {
-                        enableClickToClose();
-                    }, 150);
-                } else {
-                    if (selectionOverlay) selectionOverlay.remove();
-                    if (selectionBubble) selectionBubble.remove();
-                }
-            });
-        }
-
-        function showSelectionInfo(startX, endX, totalWidth) {
-            const startPercent = (startX / totalWidth) * 100;
-            const endPercent = (endX / totalWidth) * 100;
-            
-            // Convert to time
-            const startMinutes = (startPercent / 100) * 24 * 60;
-            const endMinutes = (endPercent / 100) * 24 * 60;
-            
-            const startHour = Math.floor(startMinutes / 60);
-            const startMin = Math.floor(startMinutes % 60);
-            const endHour = Math.floor(endMinutes / 60);
-            const endMin = Math.floor(endMinutes % 60);
-            
-            const duration = endMinutes - startMinutes;
-            const durationHour = Math.floor(duration / 60);
-            const durationMin = Math.floor(duration % 60);
-            
-            // Calculate active time (green time) in the selection
-            const activeTime = calculateActiveTime(startMinutes, endMinutes);
-            const activeHour = Math.floor(activeTime / 60);
-            const activeMin = Math.floor(activeTime % 60);
-            
-            // Calculate inactive time (red time) in the selection
-            const inactiveTime = calculateInactiveTime(startMinutes, endMinutes);
-            const inactiveHour = Math.floor(inactiveTime / 60);
-            const inactiveMin = Math.floor(inactiveTime % 60);
-            
-            // Remove old bubble
-            if (selectionBubble) selectionBubble.remove();
-            
-            // Create bubble
-            selectionBubble = document.createElement('div');
-            selectionBubble.className = 'selection-bubble';
-            
-            const formatTime = (h, m) => `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            const formatDuration = (h, m) => {
-                if (h > 0) return `${h}h ${m}m`;
-                return `${m}m`;
-            };
-            
-            selectionBubble.innerHTML = `
-                <div><strong>Start:</strong> ${formatTime(startHour, startMin)}</div>
-                <div><strong>End:</strong> ${formatTime(endHour, endMin)}</div>
-                <div><strong>Duration:</strong> ${formatDuration(durationHour, durationMin)}</div>
-                <div class="active-time"><strong>Active Time:</strong> ${formatDuration(activeHour, activeMin)}</div>
-                <div style="color: #f38ba8;"><strong>Inactive Time:</strong> ${formatDuration(inactiveHour, inactiveMin)}</div>
-            `;
-            
-            // Position bubble
-            const timelineBar = document.getElementById('timelineBar');
-            const rect = timelineBar.getBoundingClientRect();
-            const centerX = (startX + endX) / 2;
-            
-            document.body.appendChild(selectionBubble);
-            const bubbleRect = selectionBubble.getBoundingClientRect();
-            
-            selectionBubble.style.left = (rect.left + centerX - bubbleRect.width / 2) + 'px';
-            selectionBubble.style.top = (rect.top - bubbleRect.height - 10) + 'px';
-        }
-
-        function enableClickToClose() {
-            const closeHandler = (e) => {
-                if (selectionBubble && !selectionBubble.contains(e.target) && 
-                    selectionOverlay && !selectionOverlay.contains(e.target)) {
-                    if (selectionBubble) selectionBubble.remove();
-                    if (selectionOverlay) selectionOverlay.remove();
-                    document.removeEventListener('click', closeHandler);
-                }
-            };
-            
-            document.addEventListener('click', closeHandler);
-        }
-
-        function calculateActiveTime(startMinutes, endMinutes) {
-            let activeMinutes = 0;
-            const MAX_GAP_MINUTES = 5;
-            
-            activitiesData.forEach((activity, index) => {
-                const currentTime = new Date(activity.timestamp);
-                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-                
-                let nextMinutes;
-                if (index < activitiesData.length - 1) {
-                    const nextTime = new Date(activitiesData[index + 1].timestamp);
-                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
-                } else {
-                    nextMinutes = 24 * 60;
-                }
-                
-                const duration = nextMinutes - currentMinutes;
-                
-                // Match the rendering logic exactly
-                let activityEnd;
-                if (duration > MAX_GAP_MINUTES) {
-                    // If gap is more than 5 minutes, activity block is only 5 minutes
-                    activityEnd = currentMinutes + MAX_GAP_MINUTES;
-                } else {
-                    // If gap is 5 minutes or less, activity block spans the full duration
-                    activityEnd = nextMinutes;
-                }
-                
-                const activityStart = currentMinutes;
-                
-                // Check if this activity overlaps with selection
-                if (activityEnd > startMinutes && activityStart < endMinutes) {
-                    // Calculate overlap
-                    const overlapStart = Math.max(activityStart, startMinutes);
-                    const overlapEnd = Math.min(activityEnd, endMinutes);
-                    const overlapDuration = overlapEnd - overlapStart;
-                    
-                    // Only count if activity is active (not idle)
-                    // Match the rendering logic: false = active, true = idle, anything else (unknown) = active
-                    if (activity.isIdle === 'false' || activity.isIdle === 'unknown' || activity.isIdle === '') {
-                        activeMinutes += overlapDuration;
-                    }
-                }
-            });
-            
-            return activeMinutes;
-        }
-
-        function calculateInactiveTime(startMinutes, endMinutes) {
-            let inactiveMinutes = 0;
-            const MAX_GAP_MINUTES = 5;
-            
-            activitiesData.forEach((activity, index) => {
-                const currentTime = new Date(activity.timestamp);
-                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-                
-                let nextMinutes;
-                if (index < activitiesData.length - 1) {
-                    const nextTime = new Date(activitiesData[index + 1].timestamp);
-                    nextMinutes = nextTime.getHours() * 60 + nextTime.getMinutes();
-                } else {
-                    nextMinutes = 24 * 60;
-                }
-                
-                const duration = nextMinutes - currentMinutes;
-                
-                // Match the rendering logic exactly
-                let activityEnd;
-                if (duration > MAX_GAP_MINUTES) {
-                    // If gap is more than 5 minutes, activity block is only 5 minutes
-                    activityEnd = currentMinutes + MAX_GAP_MINUTES;
-                } else {
-                    // If gap is 5 minutes or less, activity block spans the full duration
-                    activityEnd = nextMinutes;
-                }
-                
-                const activityStart = currentMinutes;
-                
-                // Check if this activity overlaps with selection
-                if (activityEnd > startMinutes && activityStart < endMinutes) {
-                    // Calculate overlap
-                    const overlapStart = Math.max(activityStart, startMinutes);
-                    const overlapEnd = Math.min(activityEnd, endMinutes);
-                    const overlapDuration = overlapEnd - overlapStart;
-                    
-                    // Only count if activity is idle (true)
-                    if (activity.isIdle === 'true') {
-                        inactiveMinutes += overlapDuration;
-                    }
-                }
-            });
-            
-            return inactiveMinutes;
-        }
-
-        // Initialize
-        generateTimeLabels();
-        updateCurrentDate();
-        initDateNavigation();
-        loadActivities();
-        initRegionSelection();
-    </script>
+// ---------- boot ----------
+function readHash() {   // #YYYY-MM-DD or #YYYY-MM-DD/HH:MM-HH:MM
+    const m = /^#(\d{4})-(\d\d)-(\d\d)(?:\/(\d\d):(\d\d)-(\d\d):(\d\d))?$/.exec(location.hash);
+    if (!m) return null;
+    const date = shiftDay({ y: +m[1], m: +m[2], d: +m[3] }, 0);
+    if (dkey(date) !== `${m[1]}-${m[2]}-${m[3]}`) return null;   // impossible date
+    const at = (h, mi) => new Date(date.y, date.m - 1, date.d, +h, +mi).getTime();
+    return { date, sel: m[4] ? { start: at(m[4], m[5]), end: at(m[6], m[7]) } : null };
+}
+function setHash() {
+    const h = '#' + dkey(state.date) + (state.sel ? `/${hm(state.sel.start)}-${hmE(state.sel.end)}` : '');
+    if (location.hash !== h) try { history.replaceState(null, '', h); } catch { }
+}
+function goDay(n) {
+    state.date = n ? shiftDay(state.date, n) : todayD();
+    state.sel = loadSel(); state.filter = null;
+    setHash();
+    load(false);
+}
+async function load(keep) {
+    const key = dkey(state.date);
+    let text = '';
+    try { const r = await fetch(`logs/activity_log_${key}.csv`, { cache: 'no-store' }); if (r.ok) text = await r.text(); } catch { }
+    if (key !== dkey(state.date) || (keep && (drag || state.prompt))) return;   // navigated meanwhile / busy
+    state.live = isToday(state.date) ? key : null;
+    state.samples = parse(text, isToday(state.date));
+    build(state.samples); resolve(); layout();
+    if (!state.day) state.sel = null;
+    else if (state.sel) { state.sel = { start: clamp(state.sel.start, state.range.start, state.range.end), end: clamp(state.sel.end, state.range.start, state.range.end) }; if (state.sel.end - state.sel.start < MIN) state.sel = null; }
+    store.set('sel.' + dkey(state.date), state.sel); setHash();
+    renderHeader(); renderHours(); renderLane(); renderSel(-1); renderSummary();
+    if (!state.prompt) hover(state.px);   // c must target the day on screen
+    aiSchedule();
+}
+measure();
+new ResizeObserver(() => { measure(); renderHours(); renderSel(-1); }).observe(lane);
+chip('idle');
+function selFrom(h) {   // the hash has whole minutes: keep the exact stored selection when it reads the same
+    const s = loadSel();
+    return h && h.sel && !(s && hm(s.start) === hm(h.sel.start) && hmE(s.end) === hmE(h.sel.end)) ? h.sel : s;
+}
+{
+    const h = readHash();
+    if (h) state.date = h.date;
+    state.sel = selFrom(h);
+    setHash();
+    load(false);
+}
+window.addEventListener('hashchange', () => {
+    const h = readHash();
+    if (!h) { setHash(); return; }
+    state.date = h.date; state.sel = selFrom(h); state.filter = null; load(false);
+});
+function tick() {   // today refetches; a live page left open follows the clock past midnight
+    if (isToday(state.date)) load(true);
+    else if (state.live === dkey(state.date) && !drag && !state.prompt) goDay(0);
+}
+setInterval(tick, 60000);
+window.addEventListener('focus', tick);
+</script>
 </body>
 </html>

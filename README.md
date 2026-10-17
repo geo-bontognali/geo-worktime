@@ -1,89 +1,80 @@
-# Work Time Activity Monitor
+# geo-worktime
 
-A simple activity monitoring system for Hyprland that tracks active windows and idle time, displaying them in a visual timeline with Catppuccin Mocha theme.
+A single-file page (`index.html`, vanilla, no build) over the activity log that `monitor_activity.sh` writes on Hyprland
+(one CSV row every 90 s: active window title, class, idle flag). It shows **for which customer you worked, how long, and
+when**, so the hours can be booked per customer in AbaNinja.
 
-## Overview
+## How it works
 
-This project consists of two main components:
+- **Timeline**: the day as one bar, from the first to the last activity, in two bands. Top: **green** = you worked,
+  **amber** = the PC was on but you were idle or it was locked, **hatched** = the PC was off. Bottom: what you worked on,
+  in customer colours (paler = suggested by the AI or by "between two blocks of the same customer"). `now` is red on today.
+  Hover shows what was in front of you and for which customer.
+- **Selection**: drag across the timeline. It snaps to block edges (`Shift` = 5-min grid, `Alt` = no snap), and you can drag
+  its edges or move it. Click a block to select it, double-click to select the whole stretch the PC was on. The selection
+  stays until `Esc`, is remembered per day and lives in the URL (`#2026-10-16/09:30-12:00`).
+- **Summary** below: the selection (or the whole day) per customer, exact and in quarter hours, with a share bar. Click a
+  customer to fade the others on the timeline. `y` copies a booking block (customer, hours, top titles).
+- **Customer per title**, first hit wins: your own choice → `config.rules` → Jira key in the title (`[BET-66]`) →
+  keywords from `config.js` → ignore list → AI (optional) → between two blocks of the same customer.
+  To correct one: right-click the block (or hover it and press `c`), type, `Enter`. It is remembered for that title.
 
-1. **Bash Script (`monitor_activity.sh`)** - Monitors your active windows and idle status
-2. **HTML Dashboard (`index.html`)** - Visualizes your daily activity in a timeline
+| key | action |
+|---|---|
+| ← → | previous / next day |
+| t | today |
+| h l / H L | select previous / next block, or extend by one |
+| esc | clear the selection, then the highlight |
+| c | set the customer of the block under the mouse |
+| y | copy the booking block |
 
-## Features
+## Config and setup
 
-- **24-hour timeline visualization** with color-coded activity blocks
-- **Date navigation** to browse through historical activity logs
-- **Region selection** - Click and drag to select a time range and see:
-  - Start and end time
-  - Total duration
-  - Active time (green blocks) within the selection
-- **Activity blocks**:
-  - **Green** - Active/working (window is active)
-  - **Red** - Idle (no activity detected)
-- **Hover tooltips** showing window title/application name
-- **Catppuccin Mocha** color theme
+`config.js` is optional and gitignored. Without it the page still works (timeline, selection, totals), but only configured
+customers are recognised, so titles stay unassigned unless you set them, and no AI call is ever made.
 
-## Setup
+- `cp config.example.js config.js` and edit customers (`code` = Jira project key, `match` = keywords or `/regex/`),
+  the internal bucket, the ignore list and the AI context.
+- `./setup.sh` fills the Azure OpenAI endpoint and key from the wor-workframe dotnet user secrets (the same values
+  geo-corrector uses). It starts from `config.example.js` when `config.js` is missing, otherwise it only replaces the two
+  values in place, and sets `chmod 600`. Remove the `ai:` block to disable the AI.
+- Customers you set by hand live in the browser (`localStorage`); to make one permanent, add it to `rules` in `config.js`.
 
-### Prerequisites
-
-Make sure hypridle is configured to write idle status to `/tmp/.gtime_ipc`:
+The logger needs hypridle to write the idle flag:
 
 ```
 listener {
-    timeout = 140                     
-    on-timeout = echo 1 > /tmp/.gtime_ipc; 
-    on-resume = echo 0 > /tmp/.gtime_ipc; 
+    timeout = 140
+    on-timeout = echo 1 > /tmp/.gtime_ipc
+    on-resume = echo 0 > /tmp/.gtime_ipc
 }
 ```
 
-### Running the Monitor
+## Hyprland
 
-Add the monitor to your Hyprland config to start automatically:
+The logger starts with the session. `SUPER + SHIFT + T` runs `toggle.sh`, which pops worktime up full size in its own
+special workspace (`special:worktime`) like the corrector, launching it on first use and hiding it on the next press. It runs as a
+Chrome app with file access (needed to read `logs/` from `file://`) in its own profile `~/.chrome-proxy-profile`.
+In `~/.config/hypr/hyprland.lua`:
 
-```bash
-# ~/.config/hypr/hyprland.conf
-exec-once = ..../monitor_activity.sh
+```lua
+hl.on("hyprland.start", function()
+	hl.exec_cmd("~/repos/geo-worktime/monitor_activity.sh")
+end)
+
+hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("~/repos/geo-worktime/toggle.sh"))
 ```
 
-The script logs activity every 60 seconds by default. You can adjust the `INTERVAL` variable in the script if needed.
-
-### Viewing the Dashboard
-
-Add a keybind to open the dashboard in Chrome as a standalone app:
-
-```bash
-# ~/.config/hypr/hyprland.conf
-bind = $mainMod, W, exec, google-chrome --allow-file-access-from-files --user-data-dir=/tmp/chrome-worktime --app=file:///..../geo-worktime/index.html
-```
-
-The dashboard will automatically load today's activity log. Use the navigation buttons to browse previous or future days.
-
-## File Structure
+## Files
 
 ```
-.
-├── monitor_activity.sh    # Activity monitoring script
-├── index.html            # Dashboard UI
-├── logs/                 # Daily activity logs
-│   └── activity_log_YYYY-MM-DD.csv
-└── README.md            # This file
+index.html           dashboard (single file)
+monitor_activity.sh  logger: logs/activity_log_YYYY-MM-DD.csv, one row every 90 s
+config.example.js    template for config.js
+setup.sh             writes the AI credentials into config.js
+toggle.sh            shows / hides the page (SUPER + SHIFT + T)
+logs/                CSV logs (gitignored)
+config.js            your config incl. API key (gitignored)
 ```
 
-## CSV Log Format
-
-Each log file contains:
-- `timestamp` - Date and time of the log entry
-- `window_title` - Title of the active window
-- `window_class` - Application class name
-- `is_idle` - "true", "false", or "unknown"
-
-## How It Works
-
-The bash script runs in the background and:
-- Queries `hyprctl activewindow -j` to get the current active window
-- Reads idle status from `/tmp/.gtime_ipc` (set by hypridle)
-- Logs data every 60 seconds to a CSV file
-- Creates one log file per day in the `logs/` directory
-
-**Log format:** `logs/activity_log_YYYY-MM-DD.csv`
+The repo is public: `logs/` and `config.js` are gitignored on purpose, keep them that way.
