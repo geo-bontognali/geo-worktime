@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # Toggles worktime in its own special workspace and launches it if it isn't running.
-URL="file://$HOME/repos/geo-worktime/index.html"
-CMD="/opt/google/chrome/chrome --no-first-run --no-default-browser-check --allow-file-access-from-files --user-data-dir=$HOME/.chrome-proxy-profile --app=$URL"
+# The page is served by serve.py on 127.0.0.1 (started here if needed), which also saves what you assign.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+PORT="${WORKTIME_PORT:-47123}"
+URL="http://127.0.0.1:$PORT/index.html"
+CMD="/opt/google/chrome/chrome --no-first-run --no-default-browser-check --user-data-dir=$HOME/.chrome-proxy-profile --app=$URL"
+
+if ! pgrep -f 'geo-worktime/serve\.py' >/dev/null; then
+    setsid python3 "$DIR/serve.py" >/dev/null 2>&1 < /dev/null &
+    for _ in $(seq 20); do (echo > "/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.1; done
+fi
 
 running=$(pgrep -f 'chrome-proxy-profil[e] --app' >/dev/null && echo true)
 if [ "$running" != "true" ]; then

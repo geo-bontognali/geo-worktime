@@ -12,21 +12,20 @@
         --overlay0: #6c7086; --overlay1: #7f849c; --subtext0: #a6adc8; --text: #cdd6f4;
         --lavender: #b4befe; --green: #a6e3a1; --yellow: #f9e2af; --red: #f38ba8;
         --font: 'CaskaydiaCove Nerd Font', 'CaskaydiaCove NF', 'JetBrainsMono Nerd Font', monospace;
-        --lane: 104px;
+        --lane: 208px; --hh: 24px;
     }
-    @media (min-width: 2000px) { :root { --lane: 136px; } body { font-size: 14px; padding: 40px 64px; } }
+    @media (min-width: 2000px) { :root { --lane: 272px; } body { font-size: 16px; padding: 40px 64px; } }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
     body {
         background: var(--base); color: var(--text);
-        font: 13px/1.6 var(--font);
+        font: 15px/1.6 var(--font);
         padding: 28px 40px; overflow: hidden; user-select: none;
         display: flex; flex-direction: column;
     }
     #probe { position: absolute; visibility: hidden; white-space: pre; }
     .k { color: var(--overlay0); }
-    .sug { font-style: italic; }
 
     /* ---------- header ---------- */
     header { display: flex; align-items: baseline; gap: 3ch; margin-bottom: 40px; white-space: pre; }
@@ -36,81 +35,94 @@
     #dateT.today { color: var(--lavender); }
     #todayT { color: var(--overlay0); cursor: pointer; }
     #todayT:hover { color: var(--text); }
-    #dayT { margin-left: auto; color: var(--subtext0); }
-    #ai { color: var(--overlay0); cursor: pointer; }
-    #ai.busy { color: var(--subtext0); }
-    #ai.ok { color: var(--green); }
-    #ai.err { color: var(--red); }
+    #msg { margin-left: auto; color: var(--red); }
 
     /* ---------- timeline ---------- */
     #tl { position: relative; }
-    #hours { position: relative; height: 22px; color: var(--overlay0); font-size: 12px; }
+    #hours { position: relative; height: var(--hh); color: var(--overlay0); font-size: 14px; }
     #hours span { position: absolute; top: 0; transform: translateX(-50%); white-space: pre; }
     #hours .now { color: var(--red); }
     #lane { position: relative; height: var(--lane); background: var(--mantle); border-radius: 4px; overflow: hidden; }
     .run { position: absolute; top: 0; height: calc(50% - 1px); }
     .run.active { background: var(--green); }
     .run.idle { background: color-mix(in srgb, var(--yellow) 62%, var(--mantle)); }   /* on, but nobody at it */
-    .off, .sw.off { background: repeating-linear-gradient(45deg, var(--surface1) 0 1px, transparent 1px 6px); }   /* the pc was off */
+    .off { background: repeating-linear-gradient(45deg, var(--surface1) 0 1px, transparent 1px 6px); }   /* the pc was off */
     #offs .off { position: absolute; top: 0; height: 100%; pointer-events: none; }
     .run.hl { box-shadow: inset 0 0 0 1px var(--text); }
     .mark { position: absolute; top: calc(50% + 1px); height: calc(50% - 1px); background: var(--c); pointer-events: none; transition: opacity .12s; }
-    .mark.sug { background: color-mix(in srgb, var(--c) 55%, var(--mantle)); }
     .mark.dim { opacity: .25; }
-    .sw { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; }
-    .sw.off { box-shadow: inset 0 0 0 1px var(--surface1); }
     #now { position: absolute; top: 0; height: 100%; width: 2px; background: var(--red); }
     .dim { position: absolute; top: 0; height: 100%; background: rgba(30, 30, 46, .6); opacity: 0; transition: opacity .12s; pointer-events: none; }
     .dim.on { opacity: 1; }
-    #brk { position: relative; height: 24px; }
-    #readout { height: 24px; line-height: 24px; white-space: pre; overflow: hidden; text-overflow: ellipsis; color: var(--subtext0); margin-top: 4px; }
+    #brk { position: relative; height: 30px; }
+    #readout { position: relative; height: 24px; line-height: 24px; margin-top: 4px; }
+    #ro { position: absolute; top: 0; max-width: 100%; white-space: pre; overflow: hidden; text-overflow: ellipsis; color: var(--subtext0); }   /* follows the pointer */
 
     /* overlay over hours + lane + bracket row: the only pointer target of the timeline */
-    #ov { position: absolute; top: 0; left: 0; right: 0; height: calc(22px + var(--lane) + 24px); }
+    #ov { position: absolute; top: 0; left: 0; right: 0; cursor: crosshair; height: calc(var(--hh) + var(--lane) + 30px); }
     #ov > * { position: absolute; pointer-events: none; }
-    #hl { top: 22px; height: var(--lane); width: 1px; background: var(--overlay1); display: none; }
-    #region { top: 22px; height: var(--lane); background: rgba(205, 214, 244, .07); }
-    .edge { top: 18px; height: calc(var(--lane) + 8px); width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; }
+    #hl { top: var(--hh); height: var(--lane); width: 1px; background: var(--overlay1); display: none; }
+    #region { top: var(--hh); height: var(--lane); background: rgba(205, 214, 244, .07); }
+    .edge { top: calc(var(--hh) - 4px); height: calc(var(--lane) + 8px); width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; }
     .edge.snap { width: 3px; }
-    .et { top: 0; height: 22px; padding: 0 4px; background: var(--base); font-weight: bold; font-size: 12px; white-space: pre; }
-    #dur { top: calc(22px + var(--lane) + 4px); height: 20px; line-height: 20px; text-align: center; color: var(--subtext0); white-space: pre; overflow: hidden; }
+    .et { top: 0; height: var(--hh); padding: 0 4px; background: var(--base); font-weight: bold; font-size: 14px; white-space: pre; }
+    #dur { top: calc(var(--hh) + var(--lane) + 3px); height: 26px; line-height: 26px; text-align: center; color: var(--text); font-size: 18px; font-weight: bold; white-space: pre; overflow: hidden; }
     #ov:not(.on) #region, #ov:not(.on) .edge, #ov:not(.on) .et, #ov:not(.on) #dur { display: none; }
 
-    /* ---------- customer prompt (replaces the readout line) ---------- */
-    #prompt { display: flex; height: 24px; line-height: 24px; margin-top: 4px; white-space: pre; overflow: hidden; }
-    #prompt[hidden] { display: none; }
-    #prompt label { color: var(--subtext0); }
-    #prompt input { font: inherit; color: var(--text); background: none; border: none; outline: none; width: 1ch; margin-right: 2ch; }
-    #cands { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    #cands span.c { margin-right: 2ch; color: var(--overlay0); }
-    #cands span.c b { font-weight: normal; color: var(--subtext0); }
-    #cands .sel { background: var(--lavender); color: var(--base) !important; padding: 0 .5ch; border-radius: 2px; }
-    #cands .sel b { color: var(--base) !important; }
+    /* ---------- figures: selection and day, the numbers that matter ---------- */
+    #figs { display: flex; justify-content: center; margin-top: 28px; white-space: pre; }
+    #figs[hidden] { display: none; }
+    .fg { padding-right: 6ch; }
+    .fg + .fg { padding-left: 6ch; border-left: 1px solid var(--surface0); }
+    .fl { color: var(--overlay0); margin-bottom: 6px; }
+    .fl b { color: var(--subtext0); }
+    .fg.sel .fl b { color: var(--lavender); }
+    .row { display: flex; gap: 4ch; }
+    .fig .v { font-size: 36px; line-height: 1.15; font-weight: bold; min-width: 3em; }
+    .fig .v .u { font-weight: normal; color: var(--overlay0); }
+    .fig .l { color: var(--overlay0); font-size: 13px; }
+    .fig.act .v { color: var(--green); }
+    .fig.idl .v { color: var(--yellow); }
+    .fg.none .v { color: var(--surface1); }
 
     /* ---------- summary: the selection (or the day) per customer ---------- */
-    #sum { margin-top: 36px; max-width: 170ch; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--surface1) transparent; }
-    #sumHead { display: flex; gap: 3ch; white-space: pre; margin-bottom: 14px; }
+    #sum { margin-top: 32px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #sumHead { display: flex; gap: 3ch; white-space: pre; margin-bottom: 12px; }
     #sumHead .sc { color: var(--lavender); font-weight: bold; }
-    #copy { margin-left: auto; color: var(--overlay0); cursor: pointer; }
+    #sumHead b { font-weight: bold; color: var(--text); }
+    #sumHead .tot { margin-left: auto; }
+    #copy { color: var(--overlay0); cursor: pointer; }
     #copy:hover { color: var(--text); }
     #copy.ok { color: var(--green); }
-    .crow { display: grid; grid-template-columns: 5ch 26ch minmax(60px, 1fr) 7ch 6ch; align-items: center; gap: 2ch; height: 30px; padding: 0 1ch; border-radius: 3px; cursor: pointer; white-space: pre; }
-    .crow:hover { background: var(--mantle); }
-    .crow.on { background: var(--surface0); }
-    .crow.on .bar { background: var(--surface1); }
-    .crow .c { font-weight: bold; }
-    .crow .n { color: var(--subtext0); overflow: hidden; text-overflow: ellipsis; }
-    .crow .bar { position: relative; height: 6px; background: var(--surface0); border-radius: 3px; overflow: hidden; }
-    .crow .bar i { position: absolute; top: 0; left: 0; height: 100%; background: var(--c); border-radius: 3px; }
-    .crow .bar i.s { background: color-mix(in srgb, var(--c) 45%, transparent); }
-    .crow .h, .crow .d { text-align: right; }
-    .crow .d { color: var(--subtext0); }
-    .crow.tot { cursor: default; border-top: 1px solid var(--surface0); border-radius: 0; margin-top: 6px; height: 34px; }
-    .crow.tot:hover { background: none; }
-    .crow.tot .d { color: var(--text); }
+    /* mosaic: one tile per customer, area = active time */
+    #cust { position: relative; flex: 1; min-height: 140px; }
+    .tile { position: absolute; overflow: hidden; border-radius: 4px; background: var(--c); color: var(--crust); padding: 6px 8px; cursor: pointer; white-space: pre; line-height: 1.35; transition: opacity .12s; }
+    .tile.q { background: var(--surface1); color: var(--text); }   /* ? */
+    .tile:hover { filter: brightness(1.08); }
+    .tile.dim { opacity: .25; }
+    .tile.on { box-shadow: inset 0 0 0 2px var(--text); }
+    .tile .c { font-weight: bold; }
+    .tile .n { opacity: .75; overflow: hidden; text-overflow: ellipsis; }
+    .tile .h { font-size: 24px; font-weight: bold; line-height: 1.2; }
+    .tile .d { opacity: .75; }
+    #tip { position: fixed; z-index: 5; pointer-events: none; padding: 4px 1ch; background: var(--crust); color: var(--text); border-radius: 3px; white-space: pre; font-size: 13px; }
+    #tip[hidden] { display: none; }
+    /* assign popover (right-click) */
+    #asg { position: fixed; z-index: 6; width: 40ch; background: var(--mantle); border: 1px solid var(--surface1); border-radius: 6px; padding: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+    #asg[hidden] { display: none; }
+    #asg .ah { color: var(--overlay0); margin-bottom: 8px; white-space: pre; }
+    #asg .ah b { color: var(--text); }
+    #asgIn { width: 100%; font: inherit; color: var(--text); background: var(--base); border: 1px solid var(--surface1); border-radius: 4px; padding: 4px 1ch; outline: none; }
+    #asgIn:focus { border-color: var(--lavender); }
+    #asgList { margin-top: 8px; max-height: 16.5em; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--surface1) transparent; }
+    #asgList div { display: flex; gap: 2ch; padding: 1px 1ch; border-radius: 3px; cursor: pointer; white-space: pre; }
+    #asgList div b { min-width: 3ch; }
+    #asgList div span { color: var(--subtext0); overflow: hidden; text-overflow: ellipsis; }
+    #asgList div.on { background: var(--surface0); }
+    #asg .hint { margin-top: 8px; color: var(--overlay0); font-size: 13px; white-space: pre; }
     .empty { color: var(--overlay0); padding: 8px 1ch; }
 
-    footer { margin-top: 16px; color: var(--overlay0); white-space: pre; overflow: hidden; font-size: 12px; }
+    footer { margin-top: 16px; color: var(--overlay0); white-space: pre; overflow: hidden; font-size: 13px; }
     footer kbd { font: inherit; color: var(--overlay1); }
 </style>
 </head>
@@ -120,8 +132,7 @@
     <span id="brand">worktime</span>
     <span><span class="arrow" id="prev">‹</span><span id="dateT"></span><span class="arrow" id="next">›</span></span>
     <span id="todayT">today</span>
-    <span id="dayT"></span>
-    <span id="ai" hidden title="click to ask again"></span>
+    <span id="msg"></span>
 </header>
 <div id="tl">
     <div id="hours"></div>
@@ -134,10 +145,12 @@
         <div id="dur"></div>
     </div>
 </div>
-<div id="readout"></div>
-<div id="prompt" hidden><label id="plabel"></label><input id="pin" spellcheck="false" autocomplete="off"><span id="cands"></span></div>
+<div id="readout"><span id="ro"></span></div>
+<div id="figs" hidden></div>
 <div id="sum"><div id="sumHead"></div><div id="cust"></div></div>
-<footer><kbd>drag</kbd> select   <kbd>click</kbd> block   <kbd>double-click</kbd> whole stretch   <kbd>esc</kbd> clear   <kbd>right-click</kbd> / <kbd>c</kbd> set customer   <kbd>y</kbd> copy   <kbd>← →</kbd> day   <kbd>t</kbd> today</footer>
+<div id="tip" hidden></div>
+<div id="asg" hidden><div class="ah"></div><input id="asgIn" spellcheck="false" autocomplete="off" placeholder="code, or a new one: ABC name"><div id="asgList"></div><div class="hint">↑↓ choose   enter assign   esc cancel</div></div>
+<footer><kbd>drag</kbd> new selection   <kbd>click</kbd> block   <kbd>double-click</kbd> / <kbd>esc</kbd> clear   <kbd>right-click</kbd> assign   <kbd>y</kbd> copy   <kbd>← →</kbd> day   <kbd>t</kbd> today</footer>
 
 <script src="config.js"></script>
 <script>
@@ -148,7 +161,7 @@ const pad2 = n => String(n).padStart(2, '0');
 const MIN = 60000, HOUR = 3600000;
 const rmin = ms => Math.round(ms / MIN) * MIN;   // shown times round to the minute, like durations
 const hm = ms => { const d = new Date(rmin(ms)); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
-const dur = ms => { const m = Math.round(ms / MIN); return Math.floor(m / 60) + 'h' + pad2(m % 60); };
+const dur = ms => { const m = Math.round(ms / MIN); return Math.floor(m / 60) + ':' + pad2(m % 60); };   // 1:15
 const span = s => dur(s.end - s.start);   // exact, so it is never below the active time inside it
 const qh = ms => ms < MIN / 2 ? 0 : Math.max(.25, Math.round(ms / HOUR * 4) / 4);    // booking unit: quarter hours; seconds book nothing
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -168,29 +181,22 @@ const shiftDay = (d, n) => { const x = new Date(d.y, d.m - 1, d.d + n); return {
 const fmtDate = d => `${DOW[new Date(d.y, d.m - 1, d.d).getDay()]} ${d.d} ${MON[d.m - 1]} ${d.y}`;
 const dayEnd = d => dms(shiftDay(d, 1));   // next local midnight (23 / 25 h after d0 on the dst days)
 const hmE = ms => rmin(ms) >= dayEnd(state.date) ? '24:' + pad2(new Date(rmin(ms)).getMinutes()) : hm(ms);   // a log that runs to midnight ends at 24:00
-const dict = o => Object.assign(Object.create(null), o);   // prototype-free map: a title 'constructor' must not hit Object.prototype
 
-// ---------- config ----------
+// ---------- config: a customer is its code showing up in a window title ----------
 const CFG = window.WORKTIME_CONFIG || {};
 const PALETTE = ['#89b4fa', '#cba6f7', '#fab387', '#94e2d5', '#f5c2e7', '#f9e2af', '#74c7ec', '#f2cdcd', '#eba0ac', '#89dceb'];
 const CAT = { blue: '#89b4fa', mauve: '#cba6f7', peach: '#fab387', teal: '#94e2d5', pink: '#f5c2e7', yellow: '#f9e2af', sapphire: '#74c7ec',
     flamingo: '#f2cdcd', maroon: '#eba0ac', sky: '#89dceb', green: '#a6e3a1', red: '#f38ba8', lavender: '#b4befe', rosewater: '#f5e0dc' };
-const pat = s => s.length > 2 && s[0] === '/' && s.at(-1) === '/' ? new RegExp(s.slice(1, -1), 'i') : s.toLowerCase();
-const CUST = new Map();   // code -> { code, name, color, pats }
-(CFG.customers || []).forEach((c, i) => CUST.set(c.code, { code: c.code, name: c.name || c.code, color: CAT[c.color] || c.color || PALETTE[i % PALETTE.length], pats: (c.match || []).map(pat) }));
-const INT = { code: 'INT', name: (CFG.internal && CFG.internal.name) || 'internal', color: '#7f849c', pats: ((CFG.internal && CFG.internal.match) || []).map(pat) };
-const INT_JIRA = new Set((CFG.internal && CFG.internal.jira) || []);
-const IGNORE = (CFG.ignore || []).map(pat);
-const RULES = dict(CFG.rules);
-const AI = CFG.ai && CFG.ai.endpoint && CFG.ai.apiKey ? CFG.ai : null;
-// customer by code; codes of old assignments or rules that are not configured are created on the fly
-function cust(code) {
-    if (code === 'INT') return INT;
-    let c = CUST.get(code);
-    if (!c) CUST.set(code, c = { code, name: code, color: PALETTE[CUST.size % PALETTE.length], pats: [] });
-    return c;
-}
-const color = code => !code || code === '?' ? 'var(--surface2)' : cust(code).color;
+const hashColor = code => { let h = 0; for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; };   // a code's colour never depends on the day
+const CUST = new Map();   // code -> { code, name, color }: config.js, then customers.json (codes created from the page)
+const addCust = c => { if (c && typeof c.code === 'string' && c.code && !CUST.has(c.code)) CUST.set(c.code, { code: c.code, name: c.name || c.code, color: CAT[c.color] || c.color || hashColor(c.code) }); };
+// only known codes count: titles are full of other capitals (MDA, ERD, API, PDF); case-sensitive, so "Bettermann" is not BET
+let CODE_RE = null;
+const codeRe = () => { CODE_RE = CUST.size ? new RegExp(`\\b(${[...CUST.keys()].map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`) : null; };
+(CFG.customers || []).forEach(addCust); codeRe();
+let added = [];   // customers.json as loaded / saved
+const codeOf = title => { const m = CODE_RE && CODE_RE.exec(title); return m ? m[1] : null; };   // the first code in the title
+const color = code => CUST.has(code) ? CUST.get(code).color : 'var(--surface2)';
 const CLS = [[/teams/, 'teams'], [/outlook/, 'outlook'], [/chatgpt/, 'chatgpt'], [/claude/, 'claude'], [/music\.youtube/, 'music'],
     [/keeper/, 'keeper'], [/office|excel|powerpoint|sharepoint/, 'office'], [/chrom/, 'chrome'], [/^code|vscode|visual/, 'code'],
     [/kitty/, 'kitty'], [/rider/, 'rider'], [/remmina/, 'remmina'], [/anydesk/, 'anydesk']];
@@ -203,9 +209,9 @@ function clsShort(c) {
 
 // ---------- state ----------
 const state = {
-    date: todayD(), live: null, samples: [], items: [], sessions: [], runs: [], blocks: [], snaps: [],
-    range: { start: 0, end: 1 }, day: null, sel: null, filter: null, hov: null, px: null, prompt: null,
-    laneW: 1, laneX: 0, chW: 8, assign: dict(store.get('assign')), ai: dict(store.get('ai')),
+    date: todayD(), live: null, samples: [], items: [], sessions: [], runs: [], snaps: [], man: [],
+    range: { start: 0, end: 1 }, day: null, sel: null, filter: null, px: null,
+    laneW: 1, laneX: 0, chW: 8,
 };
 const scope = () => state.sel || state.day || state.range;
 
@@ -243,70 +249,50 @@ function build(samples) {
     let cur = null;
     for (const s of samples) {
         const key = titleKey(s.title, s.cls);
-        if (cur && cur.end === s.t && cur.key === key && cur.cls === s.cls && cur.state === s.state) { cur.end = s.end; cur.n++; continue; }
+        if (cur && cur.end === s.t && cur.key === key && cur.cls === s.cls && cur.state === s.state) { cur.end = s.end; continue; }
         if (cur && s.t > cur.end) items.push({ state: 'off', start: cur.end, end: s.t });
-        cur = { start: s.t, end: s.end, key, title: s.title, cls: s.cls, state: s.state, n: 1, code: null, source: 'none', suggested: false, ignored: false, run: -1 };
+        cur = { start: s.t, end: s.end, key, title: s.title, cls: s.cls, state: s.state, code: null, run: -1 };
         items.push(cur); sessions.push(cur);
     }
     state.items = items; state.sessions = sessions;
 }
 
-// ---------- resolve: which customer, per title ----------
-const JIRA = /\b([A-Z][A-Z0-9]{1,5})-\d{1,6}\b/g;
-const verdict = (v, source) => v === 'x' ? { code: null, source, ignored: true } : v === '-' ? { code: null, source } : { code: cust(v).code, source };
-function classify(key, title, cls) {   // first hit wins: yours › config rules › jira key › keyword › ignore › ai
-    let v = state.assign[key];
-    if (v !== undefined) return verdict(v, 'manual');
-    v = RULES[key];
-    if (v !== undefined) return verdict(v, 'rule');
-    JIRA.lastIndex = 0;
-    for (let m; (m = JIRA.exec(title));) {
-        if (INT_JIRA.has(m[1])) return { code: 'INT', source: 'jira' };
-        if (CUST.has(m[1])) return { code: m[1], source: 'jira' };
-    }
-    const hay = (key + ' | ' + cls).toLowerCase();
-    let best = null, len = 0;
-    // longest entry as written wins (a /…/ counts its pattern, not the matched text), ties → config order
-    const test = c => { for (const p of c.pats) {
-        let l = 0;
-        if (typeof p === 'string') { if (p && hay.includes(p)) l = p.length; }
-        else if (p.test(hay)) l = p.source.length + 2;
-        if (l > len) { len = l; best = c; }
-    } };
-    for (const c of CUST.values()) test(c);
-    test(INT);
-    if (best) return { code: best.code, source: 'keyword' };
-    for (const p of IGNORE) if (typeof p === 'string' ? hay.includes(p) : p.test(hay)) return { code: null, source: 'ignore', ignored: true };
-    const a = state.ai[key];
-    if (a) { const c = a.c && (a.c === 'INT' || CUST.has(a.c)) ? a.c : null; return { code: c, source: 'ai', suggested: !!c }; }
-    return { code: null, source: 'none' };
-}
-function resolve() {
-    const memo = new Map(), S = state.sessions;
-    for (const s of S) {
-        if (s.state !== 'active') { s.code = null; s.source = 'none'; s.suggested = s.ignored = false; continue; }
-        let r = memo.get(s.key);
-        if (!r) memo.set(s.key, r = classify(s.key, s.title, s.cls));
-        s.code = r.code; s.source = r.source; s.suggested = !!r.suggested; s.ignored = !!r.ignored;
-    }
-    // sandwich: short unassigned session between two active neighbours of the same customer takes it (as a suggestion)
-    const act = S.filter(s => s.state === 'active'), base = act.map(s => s.code);
-    for (let i = 1; i < act.length - 1; i++) {
-        const s = act[i], p = act[i - 1], n = act[i + 1];
-        if (base[i] || s.ignored || s.source === 'manual' || s.source === 'rule' || s.end - s.start > 10 * MIN) continue;
-        if (base[i - 1] && base[i - 1] === base[i + 1] && s.start - p.end <= 20 * MIN && n.start - s.end <= 20 * MIN) { s.code = base[i - 1]; s.source = 'sandwich'; s.suggested = true; }
-    }
-    // runs: the lane blocks, worked or inactive (idle + locked); blocks: powered-on stretches
-    const runs = [], blocks = [];
-    let r = null, b = null;
+// ---------- resolve: which customer, per session ----------
+function cut() {   // split blocks at the edges of the ranges assigned by hand: a range never covers half a block
+    const P = [...new Set(state.man.flatMap(r => [r.start, r.end]))].sort((a, b) => a - b);
+    if (!P.length) return;
+    const items = [];
     for (const it of state.items) {
-        if (it.state === 'off') { r = null; b = null; continue; }
+        let cur = it;
+        for (const p of P) if (p > cur.start && p < cur.end) { items.push({ ...cur, end: p }); cur = { ...cur, start: p }; }
+        items.push(cur);
+    }
+    state.items = items; state.sessions = items.filter(i => i.state !== 'off');
+}
+const CARRY = 2 * HOUR;   // a customer's code counts for what follows until another code shows up, at most 2 h after it was last seen
+function resolve() {
+    const S = state.sessions, memo = new Map();
+    let last = null;   // { code, end }: the last time a customer showed up, in a title or assigned by hand
+    for (const s of S) {
+        const m = s.state === 'active' ? at(state.man, s.start) : null;   // assigned by hand: beats the title
+        s.code = null; s.man = !!m;
+        if (s.state !== 'active') continue;
+        if (m) { s.code = m.code === '?' ? null : m.code; last = s.code ? { code: s.code, end: s.end } : null; continue; }   // a hand-set ? ends the carry
+        if (!memo.has(s.title)) memo.set(s.title, codeOf(s.title));
+        const code = memo.get(s.title);
+        if (code) { s.code = code; last = { code, end: s.end }; }
+        else if (last && s.start - last.end <= CARRY) s.code = last.code;
+    }
+    // runs: the lane blocks, worked or inactive (idle + locked)
+    const runs = [];
+    let r = null;
+    for (const it of state.items) {
+        if (it.state === 'off') { r = null; continue; }
         const st = it.state === 'active' ? 'active' : 'idle';
         if (r && r.state === st) { r.end = it.end; it.run = r.i; }
         else { r = { i: runs.length, start: it.start, end: it.end, state: st }; runs.push(r); it.run = r.i; }
-        if (b) b.end = it.end; else blocks.push(b = { start: it.start, end: it.end });
     }
-    state.runs = runs; state.blocks = blocks;
+    state.runs = runs;
 }
 
 // ---------- stats: the one source of every number ----------
@@ -319,23 +305,20 @@ function stats(sc, titles) {
         const d = b - a;
         if (it.state === 'active') {
             r.active += d;
-            const c = it.code || '?', e = r.byCode[c] || (r.byCode[c] = { active: 0, suggested: 0, ignored: 0, titles: titles ? new Map() : null });
+            const c = it.code || '?', e = r.byCode[c] || (r.byCode[c] = { active: 0, titles: titles ? new Map() : null });
             e.active += d;
-            if (it.suggested) e.suggested += d;
-            if (it.ignored) e.ignored += d;
-            else if (titles) { const t = clean(it.title); e.titles.set(t, (e.titles.get(t) || 0) + d); }
+            if (titles) { const t = clean(it.title); e.titles.set(t, (e.titles.get(t) || 0) + d); }
         } else if (it.state !== 'off') r.idle += d;
     }
     return r;
 }
-const bookable = (c, e) => c === '?' ? e.active - e.ignored : e.active;   // ignored titles are never booked
-function codesOf(st) {   // customers by time, then INT, then unassigned; a few seconds cut off by an edge are no row
-    const rank = c => c === '?' ? 2 : c === 'INT' ? 1 : 0;
+function codesOf(st) {   // customers by time, then ?; a few seconds cut off by an edge are no row
+    const rank = c => c === '?' ? 1 : 0;
     return Object.keys(st.byCode).filter(c => st.byCode[c].active >= MIN / 2).sort((a, b) => rank(a) - rank(b) || st.byCode[b].active - st.byCode[a].active);
 }
 
 // ---------- timeline ----------
-const lane = $('lane'), runsEl = $('runs'), ov = $('ov'), hoursEl = $('hours'), hl = $('hl'), readoutEl = $('readout');
+const lane = $('lane'), runsEl = $('runs'), ov = $('ov'), hoursEl = $('hours'), hl = $('hl'), readoutEl = $('ro');
 const ms2x = ms => (ms - state.range.start) / (state.range.end - state.range.start) * state.laneW;
 const x2ms = x => state.range.start + x / state.laneW * (state.range.end - state.range.start);
 const pct = ms => (ms - state.range.start) / (state.range.end - state.range.start) * 100;
@@ -393,8 +376,8 @@ function renderMarks() {   // lower band: every worked stretch in its customer's
     let html = '';
     for (const s of state.sessions) {
         if (s.state !== 'active') continue;
-        const code = s.code || '?', col = code === '?' ? 'var(--surface2)' : color(code);
-        html += `<div class="mark${s.suggested ? ' sug' : ''}${c && code !== c ? ' dim' : ''}" style="left:${pct(s.start)}%;width:${pct(s.end) - pct(s.start)}%;--c:${col}"></div>`;
+        const code = s.code || '?';
+        html += `<div class="mark${c && code !== c ? ' dim' : ''}" style="left:${pct(s.start)}%;width:${pct(s.end) - pct(s.start)}%;--c:${color(code)}"></div>`;
     }
     $('marks').innerHTML = html;
 }
@@ -404,12 +387,12 @@ function at(arr, ms) {
     while (lo <= hi) { const m = (lo + hi) >> 1; if (arr[m].start <= ms) { f = m; lo = m + 1; } else hi = m - 1; }
     return f >= 0 && arr[f].end > ms ? arr[f] : null;
 }
-const codeSpan = (c, sug) => `<span class="${sug ? 'sug' : ''}" style="color:${color(c)};font-weight:bold">${sug ? '~' : ''}${esc(c)}</span>`;
+const codeSpan = c => `<span style="color:${color(c)};font-weight:bold">${esc(c)}</span>`;
 function readout(ms) {   // one line about what is under the pointer
     const s = at(state.items, ms);
     if (!s) { readoutEl.textContent = ''; return; }
     if (s.state !== 'active') { readoutEl.innerHTML = `<span class="k">${hmE(ms)}   ${s.state === 'off' ? 'off' : 'inactive'}</span>`; return; }
-    const who = s.code ? codeSpan(s.code, s.suggested) + (s.suggested ? ' <span class="k">suggested</span>' : '') : '<span class="k">no customer</span>';
+    const who = (s.code ? codeSpan(s.code) : '<span class="k">?</span>') + (s.man ? ' <span class="k">assigned</span>' : '');
     readoutEl.innerHTML = `<span class="k">${hmE(ms)}</span>   ${who}   ${esc(clean(s.title))}  <span class="k">${esc(clsShort(s.cls))}</span>`;
 }
 
@@ -421,30 +404,57 @@ function renderHeader() {
     $('dateT').classList.toggle('today', today);
     $('todayT').hidden = today;
     document.title = 'worktime ' + dkey(state.date);
-    const d = state.day, st = d && stats(d);
-    const off = d ? d.end - d.start - st.active - st.idle : 0;   // what stats leaves out inside the day: the gaps
-    $('dayT').innerHTML = d ? `${hm(d.start)} → ${hmE(d.end)}   <span class="sw" style="background:var(--green)"></span><span class="k">active</span> ${dur(st.active)}   <span class="sw" style="background:color-mix(in srgb, var(--yellow) 62%, var(--mantle))"></span><span class="k">inactive</span> ${dur(st.idle)}   <span class="sw off"></span><span class="k">off</span> ${dur(off)}` : '';
 }
+const bigDur = ms => { const m = Math.round(ms / MIN); return `${Math.floor(m / 60)}<span class="u">:</span>${pad2(m % 60)}`; };
+function figGroup(name, cls, sc, st, hint) {   // total = the span; off (pc off inside it) only when there is some
+    const fig = (c, v, l) => `<div class="fig ${c}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+    if (!sc) return `<div class="fg ${cls} none"><div class="fl"><b>${name}</b>   ${hint}</div><div class="row">${fig('', '–', 'total')}${fig('', '–', 'active')}${fig('', '–', 'inactive')}</div></div>`;
+    const off = Math.max(0, sc.end - sc.start - st.active - st.idle);
+    return `<div class="fg ${cls}"><div class="fl"><b>${name}</b>   ${hm(sc.start)} → ${hmE(sc.end)}${off >= MIN ? `   off ${dur(off)}` : ''}</div>` +
+        `<div class="row">${fig('', bigDur(sc.end - sc.start), 'total')}${fig('act', bigDur(st.active), 'active')}${fig('idl', bigDur(st.idle), 'inactive')}</div></div>`;
+}
+function renderFigs(selSt, daySt) {
+    const f = $('figs');
+    f.hidden = !state.day;
+    if (state.day) f.innerHTML = figGroup('selection', 'sel', state.sel, selSt, 'drag on the timeline') + figGroup('day', 'day', state.day, daySt);
+}
+function squarify(vals, x, y, w, h) {   // squarified treemap: one rect per value, same order, tiles as square as they get
+    const out = [], total = vals.reduce((a, b) => a + b, 0);
+    if (!total || w <= 0 || h <= 0) return out;
+    const A = vals.map(v => v * w * h / total), sum = r => r.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < A.length;) {
+        const side = Math.min(w, h), worst = r => { const t = sum(r); return Math.max(side * side * Math.max(...r) / (t * t), t * t / (side * side * Math.min(...r))); };
+        const row = [A[i++]];
+        while (i < A.length && worst([...row, A[i]]) <= worst(row)) row.push(A[i++]);
+        const t = sum(row);
+        if (w >= h) { const rw = t / h; let yy = y; for (const a of row) { out.push({ x, y: yy, w: rw, h: a / rw }); yy += a / rw; } x += rw; w -= rw; }
+        else { const rh = t / w; let xx = x; for (const a of row) { out.push({ x: xx, y, w: a / rh, h: rh }); xx += a / rh; } y += rh; h -= rh; }
+    }
+    return out;
+}
+let tiles = [];   // what the tooltip reads: [{ c, name, active, d, share }]
 function renderSummary(st) {
-    if (!state.day) { sumHead.innerHTML = ''; custEl.innerHTML = `<div class="empty">no log for ${fmtDate(state.date)}</div>`; return; }
+    if (!state.day) { renderFigs(); sumHead.innerHTML = ''; tiles = []; custEl.innerHTML = `<div class="empty">no log for ${fmtDate(state.date)}</div>`; return; }
     const sc = scope(), sel = !!state.sel;
     st = st || stats(sc);
-    sumHead.innerHTML = `<span class="sc">${sel ? 'selection' : 'whole day'}</span><span>${hm(sc.start)} → ${hmE(sc.end)}</span><span>${span(sc)}</span>` +
-        `<span><span class="k">active</span> ${dur(st.active)}</span><span><span class="k">inactive</span> ${dur(st.idle)}</span>` +
-        `<span><span class="k">off</span> ${dur(Math.max(0, sc.end - sc.start - st.active - st.idle))}</span>` +
-        (sel ? '<span class="k">esc → whole day</span>' : '') + `<span id="copy">copy  y</span>`;
-    const codes = codesOf(st), max = Math.max(1, ...codes.map(c => st.byCode[c].active));
-    let html = '', tot = 0;
-    for (const c of codes) {
-        const e = st.byCode[c], d = qh(bookable(c, e)), conf = e.active - e.suggested;   // the decimals are what y copies
-        tot += d;
-        const name = c === '?' ? 'no customer' : cust(c).name;
-        html += `<div class="crow${state.filter === c ? ' on' : ''}" data-c="${esc(c)}" style="--c:${color(c)}">` +
-            `<span class="c" style="color:${color(c)}">${esc(c)}</span><span class="n">${esc(name)}${e.suggested ? ' <span class="k sug">~</span>' : ''}</span>` +
-            `<span class="bar"><i class="s" style="width:${e.active / max * 100}%"></i><i style="width:${conf / max * 100}%"></i></span>` +
-            `<span class="h">${dur(e.active)}</span><span class="d">${d.toFixed(2)}</span></div>`;
-    }
-    html += `<div class="crow tot"><span></span><span class="n">total</span><span></span><span class="h">${dur(st.active)}</span><span class="d">${tot.toFixed(2)}</span></div>`;
+    renderFigs(sel ? st : null, sel ? stats(state.day) : st);
+    const codes = codesOf(st);
+    tiles = codes.map(c => ({ c, name: c === '?' ? '' : CUST.get(c).name, active: st.byCode[c].active, d: qh(st.byCode[c].active), share: st.byCode[c].active / (st.active || 1) }));   // the decimals are what y copies
+    const tot = tiles.reduce((a, t) => a + t.d, 0);
+    sumHead.innerHTML = `<span class="sc">per customer</span><span class="k">${sel ? `selection ${hm(sc.start)} → ${hmE(sc.end)}` : 'whole day'}</span>` +
+        (sel ? '<span class="k">esc → whole day</span>' : '') + `<span class="tot"><span class="k">total</span> <b>${dur(st.active)}</b>  ${tot.toFixed(2)} h</span><span id="copy">copy  y</span>`;
+    if (!tiles.length) { custEl.innerHTML = '<div class="empty">nothing worked in this range</div>'; return; }
+    const W = custEl.clientWidth, H = custEl.clientHeight, G = 3, cw = state.chW, f = state.filter;
+    const R = squarify(tiles.map(t => t.active), 0, 0, W + G, H + G);   // + gap: each tile gives up G on its right and bottom
+    let html = '';
+    tiles.forEach((t, i) => {
+        const r = R[i], w = r.w - G, h = r.h - G;
+        if (w < 1 || h < 1) return;
+        const big = w >= 16 * cw && h >= 76, mid = w >= 7 * cw && h >= 44, small = w >= 4 * cw && h >= 26;
+        const label = big ? `<div class="c">${esc(t.c)}${t.name ? `  <span class="n">${esc(t.name)}</span>` : ''}</div><div class="h">${dur(t.active)}</div><div class="d">${t.d.toFixed(2)} h</div>`
+            : mid ? `<div class="c">${esc(t.c)}</div><div>${dur(t.active)}</div>` : small ? `<div class="c">${esc(t.c)}</div>` : '';
+        html += `<div class="tile${t.c === '?' ? ' q' : ''}${f === t.c ? ' on' : f ? ' dim' : ''}" data-i="${i}" data-c="${esc(t.c)}" style="--c:${color(t.c)};left:${r.x}px;top:${r.y}px;width:${w}px;height:${h}px;${small ? '' : 'padding:0'}">${label}</div>`;
+    });
     custEl.innerHTML = html;
 }
 function setFilter(c) {
@@ -498,63 +508,36 @@ function frame() {   // one drag frame: overlay + summary only
     if (!drag || !drag.moved) return;
     const { start, end } = state.range;
     const ms = x2ms(clamp(drag.x, 0, state.laneW));
-    let snapped = -1;
-    if (drag.mode === 'move') {
-        const r = snapMs(ms - drag.off), s = clamp(r.ms, start, end - drag.len);
-        state.sel = { start: s, end: s + drag.len };
-        if (r.hit && s === r.ms) snapped = 0;
-    } else {
-        const r = snapMs(ms), a = drag.mode === 'create' ? snapMs(drag.ms0).ms : drag.anchor, b = clamp(r.ms, start, end);   // a new selection snaps at both ends
-        state.sel = { start: Math.min(a, b), end: Math.max(a, b) };
-        if (r.hit) snapped = b < a ? 0 : 1;
-    }
+    const r = snapMs(ms), a = clamp(snapMs(drag.ms0).ms, start, end), b = clamp(r.ms, start, end);   // snaps at both ends
+    state.sel = { start: Math.min(a, b), end: Math.max(a, b) };
+    const snapped = r.hit ? (b < a ? 0 : 1) : -1;
     renderSel(snapped); renderSummary();
 }
 function hover(x) {
     if (state.hlRun) { state.hlRun.classList.remove('hl'); state.hlRun = null; }
-    if (x === null) { hl.style.display = 'none'; readoutEl.textContent = ''; state.hov = null; return; }
+    if (x === null) { hl.style.display = 'none'; readoutEl.textContent = ''; return; }
     const ms = x2ms(clamp(x, 0, state.laneW));
     hl.style.display = 'block'; hl.style.transform = `translateX(${clamp(x, 0, state.laneW)}px)`;
     readout(ms);
+    const w = readoutEl.offsetWidth;   // centred under the pointer, kept inside the lane
+    readoutEl.style.left = clamp(x - w / 2, 0, Math.max(0, state.laneW - w)) + 'px';
     const s = at(state.sessions, ms);
-    state.hov = s;
     if (s && !drag) { state.hlRun = runsEl.children[s.run] || null; if (state.hlRun) state.hlRun.classList.add('hl'); }
-}
-function cursorAt(x) {
-    const sel = state.sel;
-    let c = 'crosshair';
-    if (sel) {
-        const x0 = ms2x(sel.start), x1 = ms2x(sel.end);
-        if (Math.abs(x - x0) <= 8 || Math.abs(x - x1) <= 8) c = 'ew-resize';
-        else if (x > x0 && x < x1) c = 'grab';
-    }
-    ov.style.cursor = c;
 }
 ov.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !state.day) return;   // nothing to select on an empty day
-    if (state.prompt) closePrompt();
-    const x = e.clientX - state.laneX, ms = x2ms(clamp(x, 0, state.laneW)), sel = state.sel;
-    let mode = 'create', edge = -1;
-    if (sel) {
-        const x0 = ms2x(sel.start), x1 = ms2x(sel.end), d0 = Math.abs(x - x0), d1 = Math.abs(x - x1);
-        if (Math.min(d0, d1) <= 8) { mode = 'edge'; edge = d1 < d0 ? 1 : 0; }   // the nearer edge: on a narrow selection the zones overlap
-        else if (x > x0 && x < x1) mode = 'move';
-    }
-    drag = { mode, x0: x, x, ms0: ms, moved: false, shift: e.shiftKey, alt: e.altKey, prev: sel && { ...sel },
-        anchor: mode === 'edge' ? (edge === 0 ? sel.end : sel.start) : ms,
-        off: mode === 'move' ? ms - sel.start : 0, len: mode === 'move' ? sel.end - sel.start : 0 };
+    if (asg.range) closeAsg();
+    const x = e.clientX - state.laneX, ms = x2ms(clamp(x, 0, state.laneW));
+    drag = { x0: x, x, ms0: ms, moved: false, shift: e.shiftKey, alt: e.altKey, prev: state.sel && { ...state.sel } };   // anywhere, even inside the old one: a new selection
     try { ov.setPointerCapture(e.pointerId); } catch { }
     e.preventDefault();
 });
 ov.addEventListener('pointermove', e => {
     const x = state.px = e.clientX - state.laneX;
-    if (!state.prompt) hover(x);
-    if (!drag) { cursorAt(x); return; }
+    hover(x);
+    if (!drag) return;
     drag.x = x; drag.shift = e.shiftKey; drag.alt = e.altKey;
-    if (!drag.moved && Math.abs(x - drag.x0) >= 4) {
-        drag.moved = true;
-        ov.style.cursor = drag.mode === 'move' ? 'grabbing' : 'ew-resize';
-    }
+    if (!drag.moved && Math.abs(x - drag.x0) >= 4) drag.moved = true;
     if (drag.moved && !raf) raf = requestAnimationFrame(frame);
 });
 function pointerEnd(e) {
@@ -566,23 +549,20 @@ function pointerEnd(e) {
     if (e.type === 'pointercancel') { if (d.moved) { state.sel = d.prev; finish(); } }   // a cancelled gesture changes nothing
     else if (!d.moved) { const r = at(state.runs, d.ms0); if (r) { state.sel = { start: r.start, end: r.end }; finish(); } }   // a click, from any zone: select the block under it
     else {
-        if (state.sel && state.sel.end - state.sel.start < MIN) state.sel = d.mode === 'create' ? null : d.prev;
+        if (state.sel && state.sel.end - state.sel.start < MIN) state.sel = null;
         finish();
     }
-    cursorAt(e.clientX - state.laneX);
 }
 ov.addEventListener('pointerup', pointerEnd);
 ov.addEventListener('pointercancel', pointerEnd);
-ov.addEventListener('dblclick', e => {   // the whole powered-on stretch
-    const b = at(state.blocks, x2ms(clamp(e.clientX - state.laneX, 0, state.laneW)));
-    if (b) { state.sel = { start: b.start, end: b.end }; finish(); }
-});
-ov.addEventListener('contextmenu', e => {   // right-click: set the customer of what is under the pointer
+ov.addEventListener('dblclick', () => { if (state.sel) { state.sel = null; finish(); } });   // back to the whole day
+ov.addEventListener('contextmenu', e => {   // assign the selection (or the block under the pointer) to a customer
     e.preventDefault();
-    const s = at(state.sessions, x2ms(clamp(e.clientX - state.laneX, 0, state.laneW)));
-    if (s) openPrompt(s);
+    if (!state.day) return;
+    if (!state.sel) { const r = at(state.runs, x2ms(clamp(e.clientX - state.laneX, 0, state.laneW))); if (!r) return; state.sel = { start: r.start, end: r.end }; finish(); }
+    openAsg(e.clientX);
 });
-ov.addEventListener('pointerleave', () => { state.px = null; if (!drag && !state.prompt) hover(null); });
+ov.addEventListener('pointerleave', () => { state.px = null; if (!drag) hover(null); });
 function stepRun(dir, extend) {   // only the blocks on screen
     const { start, end } = state.range, R = state.runs.filter(r => r.end > start && r.start < end), sel = state.sel;
     if (!R.length) return;
@@ -601,67 +581,108 @@ function loadSel() {   // stored selection for the day, clamped, dropped if < 1 
     return b - a >= MIN ? { start: a, end: b } : null;
 }
 
-// ---------- customer prompt ----------
-const promptEl = $('prompt'), pin = $('pin'), candsEl = $('cands');
-const ALL = () => [...CUST.values(), INT, { code: '-', name: 'no customer' }, { code: 'x', name: 'ignore' }];
-function cands(q) {
-    const a = ALL();
-    q = q.trim().toLowerCase();
-    if (!q) return a;
-    const byCode = a.filter(c => c.code.toLowerCase().includes(q));
-    return [...byCode, ...a.filter(c => !byCode.includes(c) && c.name.toLowerCase().includes(q))];
+// ---------- assign: ranges set by hand, saved by serve.py next to the logs ----------
+const CAN_SAVE = location.protocol.startsWith('http');
+const asg = { range: null, list: [], idx: 0 }, asgEl = $('asg'), asgIn = $('asgIn'), asgList = $('asgList');
+let saving = 0, msgT = 0;
+function msg(t) { $('msg').textContent = t; clearTimeout(msgT); if (t) msgT = setTimeout(() => { $('msg').textContent = ''; }, 8000); }
+const hms = ms => { const d = new Date(ms); return ms >= dayEnd(state.date) ? '24:00:00' : `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+function parseMan(arr, date) {   // [{ from: 'HH:MM:SS', to, code }] -> sorted ranges in ms; unknown codes still count
+    const t = s => { const m = /^(\d\d):(\d\d)(?::(\d\d))?$/.exec(s || ''); return m && new Date(date.y, date.m - 1, date.d, +m[1], +m[2], +(m[3] || 0)).getTime(); };
+    const out = [];
+    for (const x of Array.isArray(arr) ? arr : []) {
+        const a = t(x.from), b = t(x.to);
+        if (a && b && b > a && typeof x.code === 'string' && x.code) { out.push({ start: a, end: b, code: x.code }); if (x.code !== '?') addCust({ code: x.code }); }
+    }
+    return out.sort((a, b) => a.start - b.start);
 }
-function openPrompt(s) {
-    if (!s || s.state !== 'active') return;
-    state.prompt = { key: s.key, pre: s.ignored ? 'x' : s.code || '-', list: [], idx: 0 };   // current customer (or suggestion, or ignore) preselected: c + enter confirms it
-    const t = clean(s.title);
-    $('plabel').textContent = `customer for “${t.length > 48 ? t.slice(0, 48) + '…' : t}”  › `;
-    pin.value = '';
-    readoutEl.hidden = true; promptEl.hidden = false;
-    filterCands(); renderCands();
-    pin.focus();
+async function getJson(path) { try { const r = await fetch(path, { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch { return null; } }
+async function put(path, data) {
+    const r = await fetch(path, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Worktime': '1' }, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
 }
-function filterCands() {   // typed: best match first; empty: back to the preselection
-    const p = state.prompt;
-    p.list = cands(pin.value);
-    p.idx = pin.value.trim() ? 0 : Math.max(0, p.list.findIndex(c => c.code === p.pre));
+function asgCands(q) {   // known codes (prefix of the code or part of the name), a new code, ? (not a customer), back to the titles
+    q = q.trim();
+    const m = /^([A-Za-z]{3})(?:\s+(.+))?$/.exec(q), code = m && m[1].toUpperCase(), name = m && m[2] ? m[2].trim() : '';
+    const all = [...CUST.values()], lq = q.toLowerCase();
+    let list = !q ? all : all.filter(c => c.code.startsWith(q.split(/\s/)[0].toUpperCase()) || c.name.toLowerCase().includes(lq));
+    list = list.map(c => ({ kind: 'cust', code: c.code, name: c.name }));
+    if (code && !CUST.has(code)) list.unshift({ kind: 'new', code, name: name || code });
+    if (!q || q === '?') list.push({ kind: 'none', code: '?', name: 'not a customer' });
+    const r = asg.range;
+    if ((!q) && state.man.some(x => x.start < r.end && x.end > r.start)) list.push({ kind: 'clear', code: '↺', name: 'as the window titles say' });
+    return list;
 }
-function closePrompt() { state.prompt = null; pin.blur(); promptEl.hidden = true; readoutEl.hidden = false; hover(state.px); }
-function renderCands() {
-    const p = state.prompt;
-    pin.style.width = (pin.value.length + 1) + 'ch';
-    const L = p.list, rot = [...L.slice(p.idx), ...L.slice(0, p.idx)];   // selected one first, always visible
-    candsEl.innerHTML = rot.map((c, i) => `<span class="c${i === 0 ? ' sel' : ''}">${esc(c.code)}${c.code === 'INT' ? '' : ' <b>' + esc(c.name) + '</b>'}</span>`).join('');
+function renderAsg() {
+    asgList.innerHTML = asg.list.map((c, i) => `<div class="${i === asg.idx ? 'on' : ''}" data-i="${i}"><b style="color:${c.kind === 'cust' || c.kind === 'new' ? color(c.code) : 'var(--overlay1)'}">${c.kind === 'new' ? '+ ' : ''}${esc(c.code)}</b><span>${esc(c.kind === 'new' ? 'new customer: ' + c.name : c.name)}</span></div>`).join('') ||
+        '<div><span>no match; a new code is 3 letters</span></div>';
+    const on = asgList.children[asg.idx];
+    if (on) on.scrollIntoView({ block: 'nearest' });
 }
-pin.addEventListener('input', () => { filterCands(); renderCands(); });
-pin.addEventListener('keydown', e => {
-    const p = state.prompt;
-    if (!p) return;
-    e.stopPropagation();
-    if (e.key === 'Escape') { e.preventDefault(); closePrompt(); }
-    else if (e.key === 'Enter') {
+function openAsg(clientX) {
+    const r = state.sel;
+    if (!r) return;
+    asg.range = { ...r };
+    asgEl.querySelector('.ah').innerHTML = `assign <b>${hm(r.start)} → ${hmE(r.end)}</b>  ${span(r)}`;
+    asgIn.value = '';
+    asg.list = asgCands('');
+    const st = stats(r), top = codesOf(st).find(c => c !== '?');   // preselect what the range mostly is already: enter confirms it
+    asg.idx = Math.max(0, asg.list.findIndex(c => c.code === top));
+    asgEl.hidden = false;
+    const w = asgEl.offsetWidth, lr = lane.getBoundingClientRect();
+    asgEl.style.left = clamp(clientX - w / 2, 8, innerWidth - w - 8) + 'px';
+    asgEl.style.top = (lr.bottom + 8) + 'px';
+    renderAsg();
+    asgIn.focus();
+}
+function closeAsg() { asg.range = null; asgEl.hidden = true; asgIn.blur(); }
+async function applyAsg(c) {
+    const r = asg.range;
+    closeAsg();
+    if (!c || !r) return;
+    if (!CAN_SAVE) { msg('not saved: open worktime with toggle.sh (served by serve.py)'); return; }
+    const a = Math.round(r.start / 1000) * 1000, b = Math.round(r.end / 1000) * 1000, day = state.date, key = dkey(day);
+    const out = [];   // the new range replaces whatever was set by hand under it
+    for (const x of state.man) {
+        if (x.end <= a || x.start >= b) { out.push(x); continue; }
+        if (x.start < a) out.push({ ...x, end: a });
+        if (x.end > b) out.push({ ...x, start: b });
+    }
+    if (c.kind !== 'clear') out.push({ start: a, end: b, code: c.code });
+    out.sort((p, q) => p.start - q.start);
+    const man = [];   // touching ranges of the same code become one
+    for (const x of out) { const l = man[man.length - 1]; if (l && l.code === x.code && l.end === x.start) l.end = x.end; else man.push({ ...x }); }
+    saving++;
+    try {
+        if (c.kind === 'new') {   // saved with the least used colour, so it is fixed from now on and differs from the others where it can
+            const use = new Map(Object.keys(CAT).map(k => [CAT[k], 0]));
+            for (const x of CUST.values()) if (use.has(x.color)) use.set(x.color, use.get(x.color) + 1);
+            const col = Object.keys(CAT).filter(k => !['green', 'red'].includes(k)).sort((p, q) => use.get(CAT[p]) - use.get(CAT[q]))[0];   // green / red mean worked / now
+            const nc = { code: c.code, name: c.name, color: col };
+            await put('customers.json', [...added, nc]);
+            added = [...added, nc]; addCust(nc); codeRe();
+        }
+        await put(`logs/assign_${key}.json`, man.map(x => ({ from: hms(x.start), to: hms(x.end), code: x.code })));
+        if (dkey(state.date) === key) { state.man = man; refresh(); }
+        msg('');
+    } catch (err) { msg('not saved: ' + (err.message || err)); }
+    finally { saving--; }
+}
+asgIn.addEventListener('input', () => { asg.list = asgCands(asgIn.value); asg.idx = 0; renderAsg(); });
+asgIn.addEventListener('keydown', e => {
+    e.stopPropagation();   // typing never triggers the page keys
+    const n = asg.list.length;
+    if (e.key === 'Escape') { e.preventDefault(); closeAsg(); }
+    else if (e.key === 'Enter') { e.preventDefault(); applyAsg(asg.list[asg.idx]); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Tab') {
         e.preventDefault();
-        const c = p.list[p.idx];
-        if (c) { closePrompt(); assign(p.key, c.code); }
-    } else if (e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const n = p.list.length, back = e.key === 'ArrowUp' || e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey);
-        if (n) p.idx = (p.idx + (back ? n - 1 : 1)) % n;
-        renderCands();
+        if (n) asg.idx = (asg.idx + (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey) ? n - 1 : 1)) % n;
+        renderAsg();
     }
 });
-pin.addEventListener('blur', () => { if (state.prompt) setTimeout(() => { if (state.prompt && document.activeElement !== pin) closePrompt(); }, 0); });
-function assign(key, v) {
-    state.assign[key] = v;
-    store.set('assign', state.assign);
-    reresolve();
-}
-function reresolve() {   // classification changed: redraw, keep selection
-    resolve(); layout();
-    renderLane(); renderHeader(); renderSel(-1); renderSummary();
-    if (!state.prompt) hover(state.px);   // the lane was rebuilt: readout and outline follow the new data
-    aiSchedule();
-}
+asgList.addEventListener('pointerdown', e => { e.preventDefault(); const el = e.target.closest('[data-i]'); if (el) applyAsg(asg.list[+el.dataset.i]); });
+document.addEventListener('pointerdown', e => { if (asg.range && !asgEl.contains(e.target) && !ov.contains(e.target)) closeAsg(); });
+asgIn.addEventListener('blur', () => setTimeout(() => { if (asg.range && document.activeElement !== asgIn) closeAsg(); }, 0));
 
 // ---------- copy: booking block for AbaNinja ----------
 async function copyText(t) {
@@ -679,11 +700,11 @@ function copyBlock() {
     const sc = scope(), st = stats(sc, true), rows = [];
     let tot = 0, totMs = 0;
     for (const c of codesOf(st)) {
-        const e = st.byCode[c], act = bookable(c, e), d = qh(act);
-        if (!d) continue;   // nothing to book: ignored, or seconds cut off by an edge
+        const e = st.byCode[c], act = e.active, d = qh(act);
+        if (!d) continue;   // nothing to book: seconds cut off by an edge
         tot += d; totMs += act;
         const titles = [...e.titles].sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]).join(', ');
-        rows.push([c, c === '?' ? 'no customer' : cust(c).name, d.toFixed(2) + ' h', titles]);
+        rows.push([c, c === '?' ? '' : CUST.get(c).name, d.toFixed(2) + ' h', titles]);
     }
     const cw = Math.max(5, ...rows.map(r => r[0].length + 1)), nw = Math.max(5, ...rows.map(r => r[1].length)), T = tot.toFixed(2) + ' h';   // the total is the widest amount
     const lines = [`${dkey(state.date)}  ${state.sel ? 'selection' : 'day'} ${hm(sc.start)}–${hmE(sc.end)}`];
@@ -696,7 +717,7 @@ function copyBlock() {
 
 // ---------- keys / mouse ----------
 document.addEventListener('keydown', e => {
-    if (state.prompt || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     let used = true;
     switch (e.key) {
         case 'ArrowLeft': case '[': goDay(-1); break;
@@ -707,99 +728,30 @@ document.addEventListener('keydown', e => {
         case 'H': stepRun(-1, true); break;
         case 'L': stepRun(1, true); break;
         case 'Escape': if (state.sel) { state.sel = null; finish(); } else if (state.filter) setFilter(null); break;
-        case 'c': openPrompt(state.hov); break;
         case 'y': copyBlock(); break;
         default: used = false;
     }
     if (used) e.preventDefault();
 });
 custEl.addEventListener('click', e => {
-    const el = e.target.closest('.crow[data-c]');
+    const el = e.target.closest('.tile');
     if (el) setFilter(state.filter === el.dataset.c ? null : el.dataset.c);
 });
+const tip = $('tip');
+custEl.addEventListener('pointermove', e => {   // every tile tells all, even one too small for a label
+    const el = e.target.closest('.tile'), t = el && tiles[+el.dataset.i];
+    if (!t) { tip.hidden = true; return; }
+    tip.textContent = `${t.c}${t.name ? '  ' + t.name : ''}   ${dur(t.active)}   ${t.d.toFixed(2)} h   ${Math.round(t.share * 100)}%`;
+    tip.hidden = false;
+    const w = tip.offsetWidth;
+    tip.style.left = clamp(e.clientX + 12, 0, innerWidth - w - 4) + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+});
+custEl.addEventListener('pointerleave', () => { tip.hidden = true; });
+new ResizeObserver(() => renderSummary()).observe(custEl);
 sumHead.addEventListener('click', e => { if (e.target.id === 'copy') copyBlock(); });
 $('prev').addEventListener('click', () => goDay(-1));
 $('next').addEventListener('click', () => goDay(1));
 $('todayT').addEventListener('click', () => goDay(0));
-
-// ---------- ai: suggests a customer for titles no rule knows ----------
-const aiEl = $('ai');
-let aiTimer = 0, aiBusy = false, aiOkT = 0, aiCtl = null;
-function chip(st, v) {
-    if (!AI) { aiEl.hidden = true; return; }
-    aiEl.hidden = false; aiEl.className = st; aiEl.title = 'click to ask again';
-    clearTimeout(aiOkT);
-    if (st === 'busy') aiEl.textContent = 'ai …';
-    else if (st === 'ok') { aiEl.textContent = `ai ✓ ${v}`; aiOkT = setTimeout(() => chip('idle'), 3000); }
-    else if (st === 'err') { aiEl.textContent = 'ai ✗'; aiEl.title = v; }
-    else aiEl.textContent = 'ai';
-}
-function aiSchedule() { if (!AI || aiBusy) return; clearTimeout(aiTimer); aiTimer = setTimeout(aiRun, 800); }
-function aiPending() {   // distinct active titles no rule classified, ≥ 2 samples, not yet asked
-    const n = new Map();
-    for (const s of state.sessions) {
-        if (s.state !== 'active' || (s.source !== 'none' && s.source !== 'sandwich') || s.key in state.ai) continue;
-        const e = n.get(s.key) || n.set(s.key, { cls: s.cls, n: 0 }).get(s.key);
-        e.n += s.n;
-    }
-    return [...n].filter(([, v]) => v.n >= 2).slice(0, 120);
-}
-const validCode = c => !c ? null : c === 'INT' || CUST.has(c) ? c : INT_JIRA.has(c) ? 'INT' : null;
-async function aiRun() {
-    if (!AI || aiBusy) return;
-    const keys = aiPending();
-    if (!keys.length) return;
-    aiBusy = true; chip('busy');
-    const hints = c => c.pats.length ? ` (hints: ${c.pats.map(p => typeof p === 'string' ? p : p.source).join(', ')})` : '';
-    const codes = [...CUST.values()].map(c => `${c.code} ${c.name}${hints(c)}`).join('; ');
-    const instructions = `You classify window titles from one consultant's workday into customers. Reply only with JSON {"r":[{"i":<index>,"c":"<code>"|null}]}. ` +
-        `Codes: ${codes}; INT = internal ${INT.name} work${hints(INT)}. Context: ${CFG.context || ''} ` +
-        `A kitty title is a Claude Code session name describing the task; map it to the customer it fits. Use null when there is no real evidence; never guess.`;
-    // Azure insists the word "json" appears in the input (not only in instructions) when text.format is json_object
-    const input = 'Classify these titles; answer as JSON.\n' + keys.map(([k, v], i) => `${i} | ${clsShort(v.cls)} | ${k}`).join('\n');
-    const ctl = aiCtl = new AbortController(), to = setTimeout(() => ctl.abort(), 10000);
-    let next = null;   // runs once the flag is down: the next batch (via reresolve) or the re-ask
-    try {
-        const res = await fetch(AI.endpoint.replace(/\/+$/, '') + '/responses', {
-            method: 'POST', signal: ctl.signal,
-            headers: { 'Content-Type': 'application/json', 'api-key': AI.apiKey },
-            body: JSON.stringify({ model: AI.model || 'gpt-5.4', instructions, input, reasoning: { effort: AI.reasoningEffort || 'none' },
-                text: { format: { type: 'json_object' } }, store: false, stream: false }),
-        });
-        if (!res.ok) {
-            let msg = res.status + ' ' + res.statusText;
-            try { msg = (await res.json()).error.message || msg; } catch { }
-            throw new Error(msg);
-        }
-        const j = await res.json();
-        let text = j.output_text || (j.output || []).flatMap(o => o.content || []).map(c => c.text || '').join('');
-        text = text.replace(/^\s*```(?:json)?\s*/, '').replace(/\s*```\s*$/, '');
-        const ans = new Map();
-        for (const x of JSON.parse(text).r || []) if (Number.isInteger(x.i) && keys[x.i]) ans.set(keys[x.i][0], validCode(x.c));
-        let fresh = 0;
-        for (const [k] of keys) { const c = ans.get(k) || null; state.ai[k] = { c, at: Date.now() }; if (c) fresh++; }
-        store.set('ai', state.ai);
-        chip('ok', fresh);
-        next = reresolve;
-    } catch (e) {
-        if (e === 'reask') next = aiSchedule;   // asked again while in flight: these answers are stale
-        else chip('err', e.name === 'AbortError' ? 'timeout' : e.message || 'failed');
-    } finally {
-        clearTimeout(to);
-        aiBusy = false; aiCtl = null;
-    }
-    if (next) next();
-}
-function aiReask() {   // forget today's answers and ask again
-    if (!AI) return;
-    if (aiCtl) aiCtl.abort('reask');
-    for (const s of state.sessions) delete state.ai[s.key];
-    store.set('ai', state.ai);
-    reresolve();
-    clearTimeout(aiTimer);
-    aiRun();
-}
-aiEl.addEventListener('click', aiReask);
 
 // ---------- boot ----------
 function readHash() {   // #YYYY-MM-DD or #YYYY-MM-DD/HH:MM-HH:MM
@@ -820,24 +772,31 @@ function goDay(n) {
     setHash();
     load(false);
 }
+function prepare() { build(state.samples); cut(); resolve(); layout(); }
+function refresh() {   // the assigned ranges changed: same day, same selection
+    prepare();
+    renderLane(); renderSel(-1); renderSummary(); hover(state.px);
+}
 async function load(keep) {
     const key = dkey(state.date);
     let text = '';
-    try { const r = await fetch(`logs/activity_log_${key}.csv`, { cache: 'no-store' }); if (r.ok) text = await r.text(); } catch { }
-    if (key !== dkey(state.date) || (keep && (drag || state.prompt))) return;   // navigated meanwhile / busy
+    const [, man, cust] = await Promise.all([
+        fetch(`logs/activity_log_${key}.csv`, { cache: 'no-store' }).then(async r => { if (r.ok) text = await r.text(); }).catch(() => { }),
+        getJson(`logs/assign_${key}.json`), getJson('customers.json')]);
+    if (key !== dkey(state.date) || (keep && (drag || asg.range || saving))) return;   // navigated meanwhile / busy
+    if (Array.isArray(cust)) { added = cust.filter(c => c && typeof c.code === 'string'); added.forEach(addCust); }
+    state.man = parseMan(man, state.date); codeRe();
     state.live = isToday(state.date) ? key : null;
     state.samples = parse(text, isToday(state.date));
-    build(state.samples); resolve(); layout();
+    prepare();
     if (!state.day) state.sel = null;
     else if (state.sel) { state.sel = { start: clamp(state.sel.start, state.range.start, state.range.end), end: clamp(state.sel.end, state.range.start, state.range.end) }; if (state.sel.end - state.sel.start < MIN) state.sel = null; }
     store.set('sel.' + dkey(state.date), state.sel); setHash();
     renderHeader(); renderHours(); renderLane(); renderSel(-1); renderSummary();
-    if (!state.prompt) hover(state.px);   // c must target the day on screen
-    aiSchedule();
+    hover(state.px);
 }
 measure();
 new ResizeObserver(() => { measure(); renderHours(); renderSel(-1); }).observe(lane);
-chip('idle');
 function selFrom(h) {   // the hash has whole minutes: keep the exact stored selection when it reads the same
     const s = loadSel();
     return h && h.sel && !(s && hm(s.start) === hm(h.sel.start) && hmE(s.end) === hmE(h.sel.end)) ? h.sel : s;
@@ -856,7 +815,7 @@ window.addEventListener('hashchange', () => {
 });
 function tick() {   // today refetches; a live page left open follows the clock past midnight
     if (isToday(state.date)) load(true);
-    else if (state.live === dkey(state.date) && !drag && !state.prompt) goDay(0);
+    else if (state.live === dkey(state.date) && !drag && !asg.range) goDay(0);
 }
 setInterval(tick, 60000);
 window.addEventListener('focus', tick);
