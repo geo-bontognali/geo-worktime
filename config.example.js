@@ -2,7 +2,7 @@
 // A customer is recognised when its code shows up in a window title as a word of its own, in capitals:
 // "[WSF-662] …", "BET Bettermann - Backlog - Jira", "Chat | SQB - MS-Apps". Only the codes listed here count,
 // so other capitals in titles (MDA, ERD, API, PDF) never turn into customers. Everything else is "?".
-// What follows a code counts for that customer until another code shows up, at most 2 h after it was last seen.
+// What follows a code counts for that customer until another code shows up, at most 1 h after it was last seen.
 // Customers created from the page (right-click → new code) land in customers.json, not here.
 window.WORKTIME_CONFIG = {
     // code = Jira project key, name = shown next to it, color = Catppuccin name or hex (fixed, so it is the same every day;

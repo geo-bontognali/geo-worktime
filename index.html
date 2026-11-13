@@ -269,7 +269,7 @@ function cut() {   // split blocks at the edges of the ranges assigned by hand: 
     }
     state.items = items; state.sessions = items.filter(i => i.state !== 'off');
 }
-const CARRY = 2 * HOUR;   // a customer's code counts for what follows until another code shows up, at most 2 h after it was last seen
+const CARRY = HOUR;   // a customer's code counts for what follows until another code shows up, at most 1 h after it was last seen
 function resolve() {
     const S = state.sessions, memo = new Map();
     let last = null;   // { code, end }: the last time a customer showed up, in a title or assigned by hand

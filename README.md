@@ -19,7 +19,7 @@ when**, so the hours can be booked per customer in AbaNinja.
   customers on the timeline. `y` copies a booking block (customer, hours, top titles).
 - **Customer**: a known customer code in the window title, as a word of its own in capitals (`[WSF-662] …`,
   `BET Bettermann - Backlog - Jira`, `Chat | SQB - …`). What follows counts for that customer until another code shows
-  up, for at most 2 h after the code was last seen. The rest is `?`. Each customer keeps its colour, every day.
+  up, for at most 1 h after the code was last seen. The rest is `?`. Each customer keeps its colour, every day.
 - **Assign by hand**: right-click the timeline to assign the selection (or the block under the pointer) to a customer.
   Type to filter, `Enter` to assign; type a new code (`ABC` or `ABC Acme AG`) to create a customer, `?` marks a range as
   no customer, `↺` gives it back to the window titles. A hand-set range beats the titles and is saved on disk
